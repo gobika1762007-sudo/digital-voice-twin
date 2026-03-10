@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Digital Twin Dashboard 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0d0d1a; font-family:'Nunito',sans-serif; color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+
+.header {
+    background:linear-gradient(135deg,#1a0030,#2d0050);
+    padding:13px 16px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid rgba(255,0,204,0.2); flex-shrink:0;
+}
+.header h2 { font-size:16px; font-weight:800; background:linear-gradient(90deg,#ff00cc,#cc00ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.online-dot { width:8px; height:8px; border-radius:50%; background:#0f0; box-shadow:0 0 6px #0f0; margin-left:auto; animation:pulse 2s infinite; }
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* Twin tabs */
+.twin-tabs { display:flex; overflow-x:auto; background:rgba(0,0,0,0.4); border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+.twin-tabs::-webkit-scrollbar { height:0; }
+.twin-tab {
+    flex-shrink:0; padding:10px 14px; background:transparent; border:none;
+    color:rgba(255,255,255,0.35); font-family:'Nunito',sans-serif;
+    font-size:11px; font-weight:800; cursor:pointer; letter-spacing:0.5px;
+    border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap;
+}
+.twin-tab:hover { color:#fff; background:rgba(255,255,255,0.04); }
+.twin-tab.active { border-bottom-color:var(--tc); color:var(--tc); background:rgba(255,255,255,0.05); }
+.twin-tab .tb-badge { display:inline-block; font-size:8px; border-radius:7px; padding:1px 5px; margin-left:4px; background:rgba(255,255,255,0.1); }
+.twin-tab.active .tb-badge { background:rgba(255,255,255,0.15); color:var(--tc); }
+
+/* Sub tabs */
+.sub-tabs { display:flex; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.04); flex-shrink:0; }
+.sub-tab {
+    flex:1; padding:8px; background:transparent; border:none;
+    color:rgba(255,255,255,0.3); font-family:'Nunito',sans-serif;
+    font-size:11px; font-weight:700; cursor:pointer;
+    border-bottom:2px solid transparent; transition:all 0.2s;
+}
+.sub-tab.active { color:#fff; border-bottom-color:rgba(255,255,255,0.4); }
+
+/* Main layout */
+.main { display:flex; flex:1; overflow:hidden; height:calc(100vh - 108px); }
+
+/* Date sidebar */
+.sidebar { width:66px; background:rgba(255,255,255,0.02); border-right:1px solid rgba(255,255,255,0.05); overflow-y:auto; flex-shrink:0; padding:5px 0; }
+.sidebar::-webkit-scrollbar { width:2px; }
+.sidebar::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); }
+.date-btn {
+    width:100%; padding:8px 3px; background:transparent; border:none;
+    cursor:pointer; color:rgba(255,255,255,0.35); font-family:'Nunito',sans-serif;
+    font-size:9px; font-weight:700; text-align:center;
+    border-left:3px solid transparent; transition:all 0.2s; line-height:1.3;
+}
+.date-btn:hover { color:#fff; background:rgba(255,255,255,0.05); }
+.date-btn.active { color:var(--tc,#ff00cc); border-left-color:var(--tc,#ff00cc); background:rgba(255,255,255,0.06); }
+.date-btn .dn { font-size:16px; font-weight:800; display:block; }
+.date-btn .dm { font-size:8px; display:block; opacity:0.6; }
+.date-btn .dc { display:inline-block; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:8px; border-radius:5px; padding:1px 4px; margin-top:2px; }
+
+/* Message area */
+.msg-area { flex:1; overflow-y:auto; padding:11px; }
+.msg-area::-webkit-scrollbar { width:3px; }
+.msg-area::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+
+.no-msg { text-align:center; padding:50px 20px; color:rgba(255,255,255,0.18); }
+.no-msg .icon { font-size:36px; margin-bottom:8px; }
+.no-msg p { font-size:12px; }
+
+/* Cards */
+.msg-card, .hist-card {
+    border-radius:12px; padding:11px; margin-bottom:9px; animation:si 0.2s ease;
+}
+.msg-card  { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); }
+.hist-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); }
+@keyframes si{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+
+.msg-time { font-size:9px; color:rgba(255,255,255,0.2); margin-bottom:6px; }
+.lbl { font-size:9px; letter-spacing:1px; margin-bottom:3px; opacity:0.6; }
+
+.bubble-user { background:rgba(255,255,255,0.07); border-radius:9px 9px 9px 2px; padding:8px 11px; font-size:13px; color:#fff; margin-bottom:7px; }
+.bubble-bot  { background:rgba(255,255,255,0.04); border-radius:9px; padding:8px 11px; font-size:12px; color:rgba(255,255,255,0.55); margin-bottom:7px; }
+.bubble-ai   { background:rgba(255,255,255,0.03); border-radius:9px; padding:8px 11px; font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:8px; font-style:italic; }
+.bubble-reply { border-radius:9px; padding:8px 11px; font-size:12px; margin-bottom:5px; }
+
+.answered-badge { display:inline-block; background:rgba(0,255,100,0.1); border:1px solid rgba(0,255,100,0.2); color:#0f9; font-size:9px; padding:2px 8px; border-radius:14px; }
+
+.reply-area { display:flex; gap:7px; align-items:flex-end; margin-top:7px; }
+.reply-input {
+    flex:1; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.12);
+    border-radius:9px; padding:8px 11px; font-size:13px; color:#fff;
+    font-family:'Nunito',sans-serif; resize:none; min-height:38px; max-height:90px; outline:none; transition:border-color 0.2s;
+}
+.reply-input:focus { border-color:var(--tc,#ff00cc); }
+.reply-input::placeholder { color:rgba(255,255,255,0.18); }
+.send-btn {
+    width:38px; height:38px; border-radius:9px; border:none; cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s; flex-shrink:0; color:#fff;
+}
+.send-btn:hover { transform:scale(1.07); }
+.send-btn:disabled { opacity:0.4; }
+
+.notif-bar {
+    position:fixed; bottom:0; left:0; right:0; padding:10px 18px;
+    text-align:center; font-size:12px; font-weight:700; display:none; z-index:200;
+    animation:slideUp 0.3s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.notif-bar.on { display:block; }
+.update-form { padding:12px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); flex-shrink:0; display:none; }
+.update-form.on { display:block; }
+.update-textarea {
+    width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.12);
+    border-radius:10px; padding:10px 13px; font-size:13px; color:#fff;
+    font-family:'Nunito',sans-serif; resize:none; min-height:70px; outline:none;
+    transition:border-color 0.2s; margin-bottom:8px;
+}
+.update-textarea:focus { border-color:var(--tc,#ff00cc); }
+.update-post-btn {
+    padding:8px 20px; border-radius:8px; border:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-size:12px; font-weight:800;
+    color:#fff; transition:transform 0.15s;
+}
+.update-post-btn:hover { transform:scale(1.03); }
+.update-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:11px; margin-bottom:9px; }
+.update-text { font-size:13px; color:#fff; margin-bottom:5px; line-height:1.5; }
+.update-meta { font-size:10px; color:rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <span style="font-size:22px;">🤖</span>
+    <h2>Digital Twin Dashboard</h2>
+    <div class="online-dot"></div>
+</div>
+
+<div class="twin-tabs" id="twinTabs"></div>
+
+<div class="sub-tabs">
+    <button class="sub-tab active" id="sub-pending" onclick="switchSub('pending')">📨 Pending</button>
+    <button class="sub-tab" id="sub-history" onclick="switchSub('history')">📖 All Chats</button>
+
+</div>
+
+<div class="update-form" id="updateForm">
+    <textarea class="update-textarea" id="updateText" placeholder="Today enna nadanthuchu... mood, food, places, feelings — எதுவும் சொல்லலாம்!"></textarea>
+    <button class="update-post-btn" id="updatePostBtn" onclick="postUpdate()" style="background:var(--tg,linear-gradient(135deg,#ff00cc,#cc00ff))">📝 Post Update</button>
+</div>
+<div class="main">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="msg-area" id="msgArea"></div>
+</div>
+
+<div class="notif-bar" id="notifBar"></div>
+
+<script>
+var TWINS = {
+    gobika:  { label:'🌸 Gobika',  color:'#ff00cc', bg:'rgba(255,0,204,0.15)',  grad:'linear-gradient(135deg,#ff00cc,#cc00ff)' },
+    teacher: { label:'📚 Teacher', color:'#38bdf8', bg:'rgba(56,189,248,0.15)', grad:'linear-gradient(135deg,#38bdf8,#0ea5e9)' },
+    warden:  { label:'🏠 Warden',  color:'#f97316', bg:'rgba(249,115,22,0.15)', grad:'linear-gradient(135deg,#f97316,#ea580c)' },
+    shop:    { label:'🛒 Shop',    color:'#4ade80', bg:'rgba(74,222,128,0.15)', grad:'linear-gradient(135deg,#4ade80,#22c55e)' },
+    coach:   { label:'💪 Coach',   color:'#c084fc', bg:'rgba(192,132,252,0.15)',grad:'linear-gradient(135deg,#c084fc,#a855f7)' },
+};
+
+var currentTwin  = 'gobika';
+var currentSub   = 'pending';
+var selectedDate = null;
+var pendingData  = {};   // {twin: [...]}
+var historyData  = {};   // {twin: [...]}
+var prevPending  = {};
+
+/* ── Init twin tabs ── */
+function initTabs() {
+    var tabs = document.getElementById('twinTabs');
+    Object.keys(TWINS).forEach(function(key) {
+        var t = TWINS[key];
+        var btn = document.createElement('button');
+        btn.className = 'twin-tab' + (key===currentTwin?' active':'');
+        btn.id = 'ttab-'+key;
+        btn.style.setProperty('--tc', t.color);
+        btn.innerHTML = t.label + ' <span class="tb-badge" id="badge-'+key+'">0</span>';
+        btn.onclick = function(){ switchTwin(key); };
+        tabs.appendChild(btn);
+    });
+}
+
+function setTwinColor(tw) {
+    var color = TWINS[tw] ? TWINS[tw].color : '#ff00cc';
+    document.documentElement.style.setProperty('--tc', color);
+}
+
+function switchTwin(tw) {
+    currentTwin = tw;
+    selectedDate = null;
+    document.querySelectorAll('.twin-tab').forEach(function(b){ b.classList.remove('active'); });
+    var el = document.getElementById('ttab-'+tw);
+    if (el) { el.classList.add('active'); el.style.setProperty('--tc', TWINS[tw].color); }
+    setTwinColor(tw);
+    // Update textarea placeholder
+    var ta = document.getElementById('updateText');
+    if (ta) ta.placeholder = TWINS[tw].label + ' — today enna nadanthuchu?';
+    renderCurrent();
+}
+
+function switchSub(sub) {
+    currentSub = sub;
+    selectedDate = null;
+    document.getElementById('sub-pending').className = 'sub-tab'+(sub==='pending'?' active':'');
+    document.getElementById('sub-history').className = 'sub-tab'+(sub==='history'?' active':'');
+    document.getElementById('sub-updates').className = 'sub-tab'+(sub==='updates'?' active':'');
+    // Show/hide update form
+    document.getElementById('updateForm').className = 'update-form'+(sub==='updates'?' on':'');
+    renderCurrent();
+}
+
+function renderUpdates(updates) {
+    var tw = TWINS[currentTwin];
+    document.getElementById('sidebar').innerHTML = '';
+    var area = document.getElementById('msgArea');
+    if (!updates || !updates.length) {
+        area.innerHTML = '<div class="no-msg"><div class="icon">📝</div><p>இன்னும் updates இல்ல!<br>உங்க daily life post பண்ணுங்க 🌸</p></div>';
+        return;
+    }
+    area.innerHTML = '';
+    updates.forEach(function(u) {
+        var card = document.createElement('div');
+        card.className = 'update-card';
+        card.innerHTML =
+            '<div class="update-text">' + escHtml(u.update) + '</div>' +
+            '<div class="update-meta">' + u.date + ' &nbsp;|&nbsp; ' + u.time + '</div>';
+        area.appendChild(card);
+    });
+}
+
+function postUpdate() {
+    var tw   = currentTwin;
+    var text = document.getElementById('updateText').value.trim();
+    if (!text) return;
+    var btn = document.getElementById('updatePostBtn');
+    btn.textContent = '⏳ Posting...'; btn.disabled = true;
+
+    fetch('/daily_update_post', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({twin: tw, update: text})
+    }).then(function(r){return r.json();}).then(function(d){
+        if (d.ok) {
+            document.getElementById('updateText').value = '';
+            btn.textContent = '✅ Posted!';
+            setTimeout(function(){ btn.textContent='📝 Post Update'; btn.disabled=false; }, 2000);
+            fetchUpdates();
+        }
+    }).catch(function(){ btn.textContent='📝 Post Update'; btn.disabled=false; });
+}
+
+var updatesData = {};
+function fetchUpdates() {
+    fetch('/daily_updates_get?twin='+currentTwin)
+        .then(function(r){return r.json();})
+        .then(function(data){
+            updatesData[currentTwin] = data;
+            if (currentSub==='updates') renderUpdates(data);
+        }).catch(function(){});
+}
+
+/* ── Helpers ── */
+function escHtml(t) { if(!t)return''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(ts) { return new Date(ts*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+function dateKey(ts) { var d=new Date(ts*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtDateLabel(k) { var d=new Date(k+'T00:00:00'); return { dn:d.getDate(), dm:d.toLocaleDateString('en-IN',{month:'short'})+' '+d.getFullYear() }; }
+
+/* ── Sidebar ── */
+function buildSidebar(messages) {
+    var groups = {};
+    messages.forEach(function(m){ var k=dateKey(m.ts); groups[k]=(groups[k]||0)+1; });
+    var dates = Object.keys(groups).sort();
+    if (!selectedDate || !groups[selectedDate]) selectedDate = dates[dates.length-1] || null;
+
+    var sb = document.getElementById('sidebar');
+    sb.innerHTML = '';
+    dates.forEach(function(k) {
+        var lbl = fmtDateLabel(k);
+        var btn = document.createElement('button');
+        btn.className = 'date-btn'+(k===selectedDate?' active':'');
+        btn.innerHTML = '<span class="dn">'+lbl.dn+'</span><span class="dm">'+lbl.dm+'</span><span class="dc">'+groups[k]+'</span>';
+        btn.onclick = function(){ selectedDate=k; renderCurrent(); };
+        sb.appendChild(btn);
+    });
+}
+
+/* ── Render pending ── */
+function renderPending(messages) {
+    var tw = TWINS[currentTwin];
+    if (!messages || !messages.length) {
+        document.getElementById('sidebar').innerHTML = '';
+        document.getElementById('msgArea').innerHTML = '<div class="no-msg"><div class="icon">✨</div><p>Pending messages இல்ல!</p></div>';
+        return;
+    }
+    buildSidebar(messages);
+    var area = document.getElementById('msgArea');
+    var filtered = messages.filter(function(m){ return dateKey(m.ts)===selectedDate; });
+    if (!filtered.length) { area.innerHTML='<div class="no-msg"><div class="icon">📭</div><p>இந்த நாளில் இல்ல</p></div>'; return; }
+
+    var focId=document.activeElement?document.activeElement.id:null;
+    var focVal=document.activeElement?document.activeElement.value:'';
+
+    area.innerHTML='';
+    filtered.forEach(function(msg) {
+        var card=document.createElement('div'); card.className='msg-card'; card.id='card-'+msg.id;
+        var aiText=msg.ai_reply||msg.bot_reply||'';
+        if (msg.status==='answered') {
+            card.innerHTML=
+                '<div class="msg-time">'+fmtTime(msg.ts)+'</div>'+
+                '<div class="lbl">USER</div><div class="bubble-user">'+escHtml(msg.user_msg)+'</div>'+
+                '<div class="lbl">உங்க REPLY</div>'+
+                '<div class="bubble-reply" style="background:'+tw.bg+';color:'+tw.color+';">'+escHtml(msg.human_reply||'')+'</div>'+
+                '<span class="answered-badge">✅ Sent</span>';
+        } else {
+            card.innerHTML=
+                '<div class="msg-time">'+fmtTime(msg.ts)+'</div>'+
+                '<div class="lbl">USER MESSAGE</div><div class="bubble-user">'+escHtml(msg.user_msg)+'</div>'+
+                '<div class="lbl">AI REPLY (reference)</div><div class="bubble-ai">'+escHtml(aiText)+'</div>'+
+                '<div class="lbl">Reply பண்ணுங்க:</div>'+
+                '<div class="reply-area">'+
+                    '<textarea class="reply-input" id="inp-'+msg.id+'" placeholder="Type பண்ணுங்க..." rows="1"></textarea>'+
+                    '<button class="send-btn" id="btn-'+msg.id+'" style="background:'+tw.grad+';" onclick="sendReply(\''+msg.id+'\')">➤</button>'+
+                '</div>';
+            setTimeout(function(id){
+                var inp=document.getElementById('inp-'+id); if(!inp)return;
+                inp.addEventListener('input',function(){this.style.height='auto';this.style.height=this.scrollHeight+'px';});
+                inp.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendReply(id);}});
+            },80,msg.id);
+        }
+        area.appendChild(card);
+    });
+    if(focId){var el=document.getElementById(focId);if(el){el.value=focVal;el.focus();el.setSelectionRange(el.value.length,el.value.length);}}
+}
+
+/* ── Render history ── */
+function renderHistory(messages) {
+    var tw = TWINS[currentTwin];
+    var filtered_twin = messages ? messages.filter(function(m){ return (m.twin||'').toLowerCase()===currentTwin; }) : [];
+    if (!filtered_twin.length) {
+        document.getElementById('sidebar').innerHTML='';
+        document.getElementById('msgArea').innerHTML='<div class="no-msg"><div class="icon">💬</div><p>இன்னும் chats இல்ல</p></div>';
+        return;
+    }
+    buildSidebar(filtered_twin);
+    var area=document.getElementById('msgArea');
+    var filtered=filtered_twin.filter(function(m){return dateKey(m.ts)===selectedDate;});
+    if(!filtered.length){area.innerHTML='<div class="no-msg"><div class="icon">📭</div><p>இந்த நாளில் chats இல்ல</p></div>';return;}
+
+    area.innerHTML='';
+    filtered.forEach(function(msg) {
+        var card=document.createElement('div'); card.className='hist-card';
+        card.innerHTML=
+            '<div class="msg-time">'+fmtTime(msg.ts)+'</div>'+
+            '<div class="lbl">USER</div><div class="bubble-user">'+escHtml(msg.user_msg)+'</div>'+
+            '<div class="lbl">BOT REPLY</div><div class="bubble-bot">'+escHtml(msg.bot_reply)+'</div>';
+        area.appendChild(card);
+    });
+}
+
+function renderCurrent() {
+    setTwinColor(currentTwin);
+    var tw = TWINS[currentTwin];
+    // Update form button color
+    var btn = document.getElementById('updatePostBtn');
+    if (btn) btn.style.background = tw.grad;
+    document.documentElement.style.setProperty('--tg', tw.grad);
+
+    if      (currentSub==='pending') renderPending(pendingData[currentTwin]||[]);
+    else if (currentSub==='history') renderHistory(historyData['all']||[]);
+    else if (currentSub==='updates') { fetchUpdates(); }
+}
+
+/* ── Send reply ── */
+function sendReply(msgId) {
+    var inp=document.getElementById('inp-'+msgId);
+    var btn=document.getElementById('btn-'+msgId);
+    var reply=inp?inp.value.trim():'';
+    if(!reply)return;
+    btn.disabled=true; btn.textContent='⏳';
+    fetch('/gobika_reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:msgId,reply:reply})})
+    .then(function(r){return r.json();}).then(function(d){
+        if(d.ok){
+            var tw=TWINS[currentTwin];
+            var card=document.getElementById('card-'+msgId);
+            if(card){card.innerHTML='<div class="msg-time">'+fmtTime(Date.now()/1000)+'</div><div class="lbl">USER</div><div class="bubble-user">'+escHtml(inp.dataset.userMsg||'')+'</div><div class="lbl">உங்க REPLY</div><div class="bubble-reply" style="background:'+tw.bg+';color:'+tw.color+';">'+escHtml(reply)+'</div><span class="answered-badge">✅ Sent!</span>';}
+        }
+    }).catch(function(){btn.disabled=false;btn.textContent='➤';});
+}
+
+/* ── Poll ── */
+function poll() {
+    // Pending
+    fetch('/gobika_pending').then(function(r){return r.json();}).then(function(data){
+        // Group by twin
+        var grouped={};
+        Object.keys(TWINS).forEach(function(k){grouped[k]=[];});
+        data.forEach(function(m){ var tw=(m.twin||'gobika').toLowerCase(); if(grouped[tw])grouped[tw].push(m); else grouped['gobika'].push(m); });
+
+        // Update badges
+        Object.keys(TWINS).forEach(function(k){
+            var pending=grouped[k].filter(function(m){return m.status==='pending';});
+            var badge=document.getElementById('badge-'+k);
+            if(badge)badge.textContent=pending.length||'';
+        });
+
+        // Notify new
+        var newPending=(grouped[currentTwin]||[]).filter(function(m){return m.status==='pending';}).length;
+        var oldPending=(pendingData[currentTwin]||[]).filter(function(m){return m.status==='pending';}).length;
+        if(newPending>oldPending && oldPending>=0){
+            var tw=TWINS[currentTwin];
+            var bar=document.getElementById('notifBar');
+            bar.style.background=tw.grad; bar.textContent='🔔 '+TWINS[currentTwin].label+' — New message!';
+            bar.classList.add('on'); setTimeout(function(){bar.classList.remove('on');},3000);
+            if(navigator.vibrate)navigator.vibrate([200,100,200]);
+        }
+
+        if(JSON.stringify(grouped)!==JSON.stringify(pendingData)){
+            pendingData=grouped;
+            if(currentSub==='pending')renderPending(pendingData[currentTwin]||[]);
+        }
+    }).catch(function(){});
+
+    // History
+    fetch('/chat_history_data').then(function(r){return r.json();}).then(function(data){
+        if(JSON.stringify(data)!==JSON.stringify(historyData['all'])){
+            historyData['all']=data;
+            if(currentSub==='history')renderHistory(data);
+        }
+    }).catch(function(){});
+}
+
+initTabs();
+setTwinColor(currentTwin);
+poll();
+setInterval(poll,4000);
+</script>
+</body>
+</html>

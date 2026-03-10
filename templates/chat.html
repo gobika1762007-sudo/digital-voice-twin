@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin Chat</title>
+    <style>
+        body { background-color:#0a0a0a; margin:0; height:100vh; display:flex; justify-content:center; align-items:center; font-family:'Segoe UI',sans-serif; color:white; }
+        .chat-container { width:420px; height:700px; background:rgba(20,20,20,0.95); border:1px solid #0fa; border-radius:20px; box-shadow:0 0 20px #0fa; display:flex; flex-direction:column; overflow:hidden; }
+        .header { padding:20px; text-align:center; background:#111; border-bottom:1px solid #0fa; position:relative; }
+        .header h2 { margin:0; font-size:20px; color:#fff; text-shadow:0 0 10px #0fa; }
+        .header p  { margin:4px 0 0; font-size:12px; color:#0fa; opacity:0.7; }
+        .back-btn { position:absolute; left:15px; top:22px; background:transparent; color:#0fa; border:1px solid #0fa; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12px; }
+        .messages { flex:1; padding:15px; overflow-y:auto; background:#000; display:flex; flex-direction:column; }
+        .msg { max-width:80%; padding:12px; margin:10px 0; border-radius:15px; font-size:14px; line-height:1.5; word-wrap:break-word; }
+        .bot { background:rgba(0,255,170,0.1); color:#0fa; border:1px solid #0fa; align-self:flex-start; border-bottom-left-radius:2px; }
+        .user { background:rgba(255,0,255,0.1); color:#f0f; border:1px solid #f0f; align-self:flex-end; border-bottom-right-radius:2px; text-shadow:0 0 5px #f0f; }
+        .emotion-label { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; margin-top:5px; font-family:monospace; letter-spacing:1px; opacity:0.7; }
+        .emotion-happy   { background:rgba(0,255,100,0.15);  color:#0f9; border:1px solid #0f9; }
+        .emotion-funny   { background:rgba(255,200,0,0.15);  color:#fc0; border:1px solid #fc0; }
+        .emotion-sad     { background:rgba(100,150,255,0.15);color:#8af; border:1px solid #8af; }
+        .emotion-angry   { background:rgba(255,60,60,0.15);  color:#f66; border:1px solid #f66; }
+        .emotion-thinking{ background:rgba(200,100,255,0.15);color:#c8f; border:1px solid #c8f; }
+        .emotion-neutral { background:rgba(255,255,255,0.08);color:#888; border:1px solid #555; }
+        .typing-dots { display:flex; gap:5px; padding:14px 18px; align-self:flex-start; }
+        .typing-dots span { width:8px; height:8px; border-radius:50%; background:#0fa; opacity:0.4; animation:blink 1.2s infinite; }
+        .typing-dots span:nth-child(2){animation-delay:0.2s;} .typing-dots span:nth-child(3){animation-delay:0.4s;}
+        @keyframes blink{0%,80%,100%{opacity:0.4;}40%{opacity:1;}}
+        /* Teacher step cards */
+        .teacher-step { max-width:88%; align-self:flex-start; background:rgba(10,15,25,0.95); border:1px solid #1e3048; border-radius:12px; padding:10px 14px; margin:6px 0; opacity:0; transform:translateY(8px); animation:stepIn 0.35s ease forwards; }
+        @keyframes stepIn{to{opacity:1;transform:translateY(0);}}
+        .step-label { display:inline-block; font-size:10px; font-family:monospace; letter-spacing:1.2px; text-transform:uppercase; padding:2px 8px; border-radius:4px; margin-bottom:6px; font-weight:700; }
+        .step-body { font-size:13.5px; line-height:1.7; color:#c8c4bc; }
+        .math-block { display:block; background:rgba(56,189,248,0.08); border-left:3px solid #38bdf8; color:#38bdf8; font-family:monospace; padding:5px 10px; border-radius:0 6px 6px 0; margin:5px 0; font-size:13px; }
+        .answer-body { color:#4ade80; font-size:15px; font-weight:bold; background:rgba(74,222,128,0.08); border-left:3px solid #4ade80; padding:6px 12px; border-radius:0 6px 6px 0; margin:4px 0; }
+        .tip-body { color:#c084fc; border-left:3px solid #c084fc; padding:5px 10px; border-radius:0 6px 6px 0; margin:4px 0; }
+        .input-area { display:flex; padding:15px; background:#111; border-top:1px solid #333; }
+        .input-area input { flex:1; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:10px; outline:none; }
+        .send-btn { background:rgb(221,0,255); color:black; border:none; padding:10px 15px; margin-left:10px; border-radius:10px; font-weight:bold; cursor:pointer; box-shadow:0 0 10px rgb(208,0,255); transition:opacity 0.2s; }
+        .send-btn:disabled{opacity:0.4;cursor:not-allowed;}
+        .mic-area { text-align:center; padding-bottom:20px; background:#111; }
+        .mic-btn { width:50px; height:50px; border-radius:50%; border:none; background:#222; color:#ff00c3; border:1px solid rgba(255,0,204,0.882); font-size:20px; cursor:pointer; transition:0.3s; box-shadow:0 0 10px rgb(255,0,170); }
+        .mic-btn.recording { background:#f00; color:#fff; border-color:#fff; box-shadow:0 0 20px #f00; animation:pulse 1s infinite; }
+        @keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+        .error-msg{color:#ff6060;border-color:#ff6060!important;background:rgba(255,60,60,0.1)!important;}
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='/'">Back</button>
+        <h2 id="twin-title">AI Twin</h2>
+        <p id="twin-sub"></p>
+    </div>
+    <div class="messages" id="msgs"></div>
+    <div class="input-area">
+        <input type="text" id="input" placeholder="Type a message..." onkeypress="handleKey(event)">
+        <button class="send-btn" id="sendBtn" onclick="sendText()">Send</button>
+    </div>
+    <div class="mic-area">
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎙️</button>
+    </div>
+</div>
+<script>
+const twin = "{{ twin }}";
+const twinMeta = {
+    gobika:  { label:"GOBIKA TWIN",     sub:"Your cheerful best friend 😄" },
+    teacher: { label:"TEACHER TWIN",    sub:"Your 10th Maths guide 📐" },
+    warden:  { label:"WARDEN TWIN",     sub:"Hostel rules & discipline 📋" },
+    shop:    { label:"SHOP OWNER TWIN", sub:"Prices, stock & deals 🛒" },
+    coach:   { label:"COACH TWIN",      sub:"Fitness & motivation 💪" },
+};
+const meta = twinMeta[twin] || twinMeta.gobika;
+document.getElementById('twin-title').innerText = meta.label;
+document.getElementById('twin-sub').innerText   = meta.sub;
+
+const msgs    = document.getElementById("msgs");
+const input   = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const micBtn  = document.getElementById("micBtn");
+
+const welcomes = {
+    gobika:  "Ayyo vanakkam da! Naan Gobika! Eppadi irukka? 😊",
+    teacher: "Vanakkam da! Enna maths doubt irukku? Kelu! 📚",
+    warden:  "Attention! Hostel rules follow pannunga. Enna vishayam? 📋",
+    shop:    "Vanakam ma! Enna venum sollunga! 🛒",
+    coach:   "Yo! Ready-ah? Let's go! 💪",
+};
+addMsg(welcomes[twin] || "Vanakkam!", "bot");
+
+let recognition, recording = false;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+    recognition = new SR();
+    recognition.lang = "en-IN";
+    recognition.onstart  = () => { recording=true;  micBtn.classList.add("recording"); };
+    recognition.onresult = (e) => { sendText(e.results[0][0].transcript); };
+    recognition.onend    = () => { recording=false; micBtn.classList.remove("recording"); };
+}
+function toggleMic() {
+    if (!recognition) return alert("Chrome browser use pannunga!");
+    recording ? recognition.stop() : recognition.start();
+}
+function handleKey(e) { if (e.key==='Enter') sendText(); }
+
+function addMsg(text, cls) {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.innerText = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+}
+function showTyping() {
+    const d = document.createElement("div");
+    d.className = "typing-dots"; d.id = "typing";
+    d.innerHTML = "<span></span><span></span><span></span>";
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+function hideTyping() {
+    const t = document.getElementById("typing");
+    if (t) t.remove();
+}
+
+// Teacher step colors
+const STEP_COLORS = {
+    intro:  { color:"#38bdf8", bg:"rgba(56,189,248,0.15)"  },
+    work:   { color:"#f97316", bg:"rgba(249,115,22,0.15)"  },
+    answer: { color:"#4ade80", bg:"rgba(74,222,128,0.15)"  },
+    tip:    { color:"#c084fc", bg:"rgba(192,132,252,0.15)" },
+};
+
+function parseMathDisplay(text) {
+    // Replace [M]...[/M] with math block
+    var result = "";
+    var remaining = text;
+    while (true) {
+        var start = remaining.indexOf("[M]");
+        if (start === -1) { result += remaining; break; }
+        result += remaining.substring(0, start);
+        var end = remaining.indexOf("[/M]", start);
+        if (end === -1) { result += remaining.substring(start); break; }
+        var mathContent = remaining.substring(start + 3, end);
+        result += '<span class="math-block">' + mathContent + '</span>';
+        remaining = remaining.substring(end + 4);
+    }
+    return result.replace(/\n/g, "<br>");
+}
+
+// Speak steps one by one — queue based
+function speakStepsQueue(steps, index) {
+    if (index >= steps.length) return;
+    var text = (steps[index].speak || "").trim();
+    // Remove non-speakable chars
+    var clean = "";
+    for (var i = 0; i < text.length; i++) {
+        var c = text.charCodeAt(i);
+        if (c < 128) clean += text[i];
+    }
+    clean = clean.trim();
+    if (!clean) { speakStepsQueue(steps, index + 1); return; }
+
+    var u = new SpeechSynthesisUtterance(clean);
+    u.lang = "en-IN"; u.rate = 0.87; u.pitch = 1.05;
+    var voices = speechSynthesis.getVoices();
+    var v = null;
+    for (var i = 0; i < voices.length; i++) {
+        if (voices[i].lang === "en-IN") { v = voices[i]; break; }
+    }
+    if (!v) {
+        for (var i = 0; i < voices.length; i++) {
+            if (voices[i].name.toLowerCase().indexOf("india") !== -1) { v = voices[i]; break; }
+        }
+    }
+    if (!v && voices.length > 0) v = voices[0];
+    if (v) u.voice = v;
+
+    u.onend   = function() { setTimeout(function(){ speakStepsQueue(steps, index+1); }, 400); };
+    u.onerror = function() { setTimeout(function(){ speakStepsQueue(steps, index+1); }, 400); };
+    speechSynthesis.speak(u);
+}
+
+function renderTeacherSteps(steps) {
+    // Show each card with delay
+    for (var i = 0; i < steps.length; i++) {
+        (function(step, idx) {
+            setTimeout(function() {
+                var sc = STEP_COLORS[step.type] || STEP_COLORS.work;
+
+                var card = document.createElement("div");
+                card.className = "teacher-step";
+
+                var label = document.createElement("div");
+                label.className = "step-label";
+                label.style.color      = sc.color;
+                label.style.background = sc.bg;
+                label.innerText = step.label || ("Step " + (idx+1));
+                card.appendChild(label);
+
+                var body = document.createElement("div");
+                var display = step.display || step.speak || "";
+
+                if (step.type === "answer") {
+                    body.innerHTML = '<div class="answer-body">' + parseMathDisplay(display) + '</div>';
+                } else if (step.type === "tip") {
+                    body.innerHTML = '<div class="tip-body">💡 ' + parseMathDisplay(display) + '</div>';
+                } else {
+                    body.className = "step-body";
+                    body.innerHTML = parseMathDisplay(display);
+                }
+                card.appendChild(body);
+                msgs.appendChild(card);
+                msgs.scrollTop = msgs.scrollHeight;
+            }, idx * 2800);
+        })(steps[i], i);
+    }
+    // Start speaking queue after short delay
+    speechSynthesis.cancel();
+    setTimeout(function(){ speakStepsQueue(steps, 0); }, 600);
+}
+
+async function sendText(customText) {
+    var text = (customText || input.value).trim();
+    if (!text) return;
+
+    addMsg(text, "user");
+    input.value = "";
+    sendBtn.disabled = true;
+    sendBtn.textContent = "...";
+    showTyping();
+
+    try {
+        var response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, twin: twin }),
+        });
+        if (!response.ok) throw new Error("Server error: " + response.status);
+
+        var data = await response.json();
+        hideTyping();
+
+        // Gobika human reply pending
+        if (data.needs_human && data.msg_id) {
+            var waitDiv = document.createElement("div");
+            waitDiv.className = "msg bot";
+            waitDiv.innerHTML = "⏳ " + data.reply;
+            msgs.appendChild(waitDiv);
+            msgs.scrollTop = msgs.scrollHeight;
+            // Poll — if no human reply in timeout, show AI reply
+            pollGobikaReply(data.msg_id, waitDiv, data.ai_reply, data.timeout_sec);
+            return;
+        }
+
+        // Teacher: try parse JSON steps
+        if (twin === "teacher") {
+            var parsed = null;
+            try {
+                var raw = data.reply;
+                // Remove markdown fences if any
+                raw = raw.replace(/^```json/, "").replace(/```$/, "").trim();
+                parsed = JSON.parse(raw);
+            } catch(e1) {
+                try {
+                    // Try parsing as stringified JSON
+                    parsed = JSON.parse(JSON.stringify(data.reply));
+                    if (typeof parsed === "string") parsed = JSON.parse(parsed);
+                } catch(e2) {
+                    console.log("Teacher parse error:", e1, e2);
+                }
+            }
+
+            if (parsed && parsed.steps && parsed.steps.length > 0) {
+                // Play edge-tts voice
+                var audio = new Audio("/static/reply.wav?t=" + Date.now());
+                audio.playbackRate = 0.9;
+                audio.play().catch(function(e){ console.log("audio err:", e); });
+                renderTeacherSteps(parsed.steps);
+                return;
+            }
+        }
+
+        // Normal reply
+        var msgDiv = document.createElement("div");
+        msgDiv.className = "msg bot";
+        msgDiv.innerText = data.reply;
+
+        var emotionName  = data.emotion || "neutral";
+        var emotionLabel = data.label   || "Neutral";
+        var emotionEmoji = data.emoji   || "💬";
+        var labelDiv = document.createElement("div");
+        labelDiv.className = "emotion-label emotion-" + emotionName;
+        labelDiv.innerText = emotionEmoji + " " + emotionLabel;
+        msgDiv.appendChild(labelDiv);
+        msgs.appendChild(msgDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+
+        var audio = new Audio("/static/reply.wav?t=" + Date.now());
+        audio.playbackRate = 0.9;
+        audio.play().catch(function() {
+            var u = new SpeechSynthesisUtterance(data.reply);
+            u.lang = "en-IN";
+            speechSynthesis.speak(u);
+        });
+
+    } catch(err) {
+        hideTyping();
+        addMsg("Oops! Something went wrong. Try again.", "bot error-msg");
+        console.error("Chat error:", err);
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+    }
+}
+
+speechSynthesis.getVoices();
+if (speechSynthesis.onvoiceschanged !== undefined)
+    speechSynthesis.onvoiceschanged = function(){};
+
+    // ── Gobika human reply polling ────────────────────────────────────
+    function pollGobikaReply(msgId, waitDiv, aiReply, timeoutSec) {
+        var timeout = (timeoutSec || 120) * 1000;
+        var elapsed = 0;
+        var interval = setInterval(function() {
+            elapsed += 3000;
+            fetch('/gobika_pending')
+                .then(function(r){ return r.json(); })
+                .then(function(queue) {
+                    for (var i=0; i<queue.length; i++) {
+                        if (queue[i].id === msgId && queue[i].status === 'answered') {
+                            clearInterval(interval);
+                            // Real Gobika replied!
+                            waitDiv.className = "msg bot";
+                            waitDiv.innerHTML = '🌸 <strong>Gobika:</strong> ' + queue[i].human_reply;
+                            var audio = new Audio("/static/reply.wav?t=" + Date.now());
+                            audio.play().catch(function(){});
+                            return;
+                        }
+                    }
+                    // Timeout — show AI reply
+                    if (elapsed >= timeout) {
+                        clearInterval(interval);
+                        waitDiv.className = "msg bot";
+                        waitDiv.innerText = aiReply || "Gobika ippo busy da! Apram pesuva!";
+                        var audio = new Audio("/static/reply.wav?t=" + Date.now());
+                        audio.play().catch(function(){});
+                    }
+                });
+        }, 3000);
+    }
+</script>
+</body>
+</html>

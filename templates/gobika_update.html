@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gobika Daily Update 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0d0d1a; font-family:'Nunito',sans-serif; color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+
+.header {
+    background:linear-gradient(135deg,#ff00cc,#cc00ff);
+    padding:15px 18px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 4px 20px rgba(255,0,204,0.4); flex-shrink:0;
+}
+.header-avatar { font-size:26px; }
+.header-info h2 { font-size:17px; font-weight:800; }
+.header-info p  { font-size:10px; opacity:0.8; }
+
+.container { padding:16px; max-width:500px; margin:0 auto; width:100%; }
+
+/* Twin selector */
+.twin-selector { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.twin-btn {
+    padding:7px 14px; border-radius:20px; border:1.5px solid rgba(255,255,255,0.1);
+    background:transparent; color:rgba(255,255,255,0.4);
+    font-family:'Nunito',sans-serif; font-size:11px; font-weight:800;
+    cursor:pointer; transition:all 0.2s; letter-spacing:0.5px;
+}
+.twin-btn.active { border-color:var(--tc); color:var(--tc); background:rgba(255,255,255,0.07); }
+
+/* Post box */
+.post-card {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,0,204,0.15);
+    border-radius:16px; padding:16px; margin-bottom:16px;
+}
+.post-label { font-size:10px; color:rgba(255,255,255,0.35); letter-spacing:1px; margin-bottom:8px; }
+.post-textarea {
+    width:100%; background:rgba(255,255,255,0.06);
+    border:1.5px solid rgba(255,0,204,0.2); border-radius:12px;
+    padding:12px 14px; font-size:14px; color:#fff;
+    font-family:'Nunito',sans-serif; resize:none;
+    min-height:100px; outline:none; transition:border-color 0.2s;
+    margin-bottom:12px; line-height:1.6;
+}
+.post-textarea:focus { border-color:#ff00cc; }
+.post-textarea::placeholder { color:rgba(255,255,255,0.18); }
+.post-btn {
+    width:100%; padding:13px; border-radius:12px; border:none;
+    background:linear-gradient(135deg,#ff00cc,#cc00ff);
+    color:#fff; font-family:'Nunito',sans-serif;
+    font-size:14px; font-weight:800; cursor:pointer;
+    box-shadow:0 4px 16px rgba(255,0,204,0.35);
+    transition:transform 0.15s, opacity 0.15s;
+}
+.post-btn:hover { transform:scale(1.01); }
+.post-btn:disabled { opacity:0.5; }
+
+/* Success toast */
+.toast {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px);
+    background:linear-gradient(135deg,#4ade80,#22c55e);
+    color:#fff; font-size:13px; font-weight:800;
+    padding:10px 24px; border-radius:24px;
+    box-shadow:0 4px 20px rgba(74,222,128,0.4);
+    transition:transform 0.3s ease; z-index:300; white-space:nowrap;
+}
+.toast.on { transform:translateX(-50%) translateY(0); }
+
+/* History */
+.history-title {
+    font-size:11px; color:rgba(255,255,255,0.3); letter-spacing:1px;
+    margin-bottom:10px; margin-top:4px;
+}
+.hist-card {
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);
+    border-radius:12px; padding:12px; margin-bottom:8px;
+}
+.hist-text { font-size:13px; color:rgba(255,255,255,0.8); line-height:1.5; margin-bottom:5px; }
+.hist-meta { font-size:9px; color:rgba(255,255,255,0.25); }
+.hist-twin { display:inline-block; font-size:9px; font-weight:800; padding:2px 8px; border-radius:8px; margin-bottom:5px; }
+
+.no-hist { text-align:center; padding:30px 20px; color:rgba(255,255,255,0.2); font-size:12px; }
+/* PIN screen */
+.pin-screen {
+    position:fixed; inset:0; background:#0d0d1a;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    z-index:999; padding:30px;
+}
+.pin-screen.hide { display:none; }
+.pin-avatar { font-size:56px; margin-bottom:16px; }
+.pin-title  { font-size:18px; font-weight:800; color:#ff00cc; margin-bottom:6px; }
+.pin-sub    { font-size:12px; color:rgba(255,255,255,0.35); margin-bottom:28px; }
+.pin-input  {
+    width:100%; max-width:280px; text-align:center;
+    background:rgba(255,255,255,0.07); border:2px solid rgba(255,0,204,0.3);
+    border-radius:14px; padding:14px; font-size:24px; color:#fff; letter-spacing:8px;
+    font-family:'Nunito',sans-serif; outline:none; margin-bottom:14px;
+}
+.pin-input:focus { border-color:#ff00cc; }
+.pin-btn {
+    width:100%; max-width:280px; padding:13px; border-radius:12px; border:none;
+    background:linear-gradient(135deg,#ff00cc,#cc00ff); color:#fff;
+    font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; cursor:pointer;
+}
+.pin-error { color:#f87171; font-size:12px; margin-top:10px; display:none; }
+.pin-error.on { display:block; }
+</style>
+</head>
+<body>
+
+<!-- PIN Screen -->
+<div class="pin-screen" id="pinScreen">
+    <div class="pin-avatar">🌸</div>
+    <div class="pin-title">Gobika's Update Page</div>
+    <div class="pin-sub">உங்க PIN enter பண்ணுங்க</div>
+    <input class="pin-input" id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+    <button class="pin-btn" onclick="verifyPin()">Unlock 🔓</button>
+    <div class="pin-error" id="pinError">❌ Wrong PIN! Try again.</div>
+</div>
+
+<div class="header">
+    <div class="header-avatar">📝</div>
+    <div class="header-info">
+        <h2>Daily Update</h2>
+        <p>Twin-க்கு today's context அனுப்புங்க</p>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Twin selector -->
+    <div class="twin-selector" id="twinSelector"></div>
+
+    <!-- Post box -->
+    <div class="post-card">
+        <div class="post-label">TODAY'S UPDATE</div>
+        <textarea class="post-textarea" id="updateText" placeholder="Today enna nadanthuchu... mood, food, places, feelings — எதுவும் சொல்லலாம்!" rows="4"></textarea>
+        <button class="post-btn" id="postBtn" onclick="postUpdate()">📝 Twin-க்கு அனுப்பு</button>
+    </div>
+
+    <!-- History -->
+    <div class="history-title">RECENT UPDATES</div>
+    <div id="histList"></div>
+
+</div>
+
+<div class="toast" id="toast">✅ Update sent to twin!</div>
+
+<script>
+var TWINS = {
+    gobika:  { label:'🌸 Gobika',  color:'#ff00cc', grad:'linear-gradient(135deg,#ff00cc,#cc00ff)' },
+    teacher: { label:'📚 Teacher', color:'#38bdf8', grad:'linear-gradient(135deg,#38bdf8,#0ea5e9)' },
+    warden:  { label:'🏠 Warden',  color:'#f97316', grad:'linear-gradient(135deg,#f97316,#ea580c)' },
+    shop:    { label:'🛒 Shop',    color:'#4ade80', grad:'linear-gradient(135deg,#4ade80,#22c55e)' },
+    coach:   { label:'💪 Coach',   color:'#c084fc', grad:'linear-gradient(135deg,#c084fc,#a855f7)' },
+};
+var currentTwin = 'gobika';
+
+function escHtml(t) { if(!t)return''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ── Twin selector ── */
+function initTwins() {
+    var sel = document.getElementById('twinSelector');
+    Object.keys(TWINS).forEach(function(k) {
+        var tw = TWINS[k];
+        var btn = document.createElement('button');
+        btn.className = 'twin-btn' + (k===currentTwin?' active':'');
+        btn.id = 'twbtn-'+k;
+        btn.style.setProperty('--tc', tw.color);
+        btn.textContent = tw.label;
+        btn.onclick = function(){ switchTwin(k); };
+        sel.appendChild(btn);
+    });
+    updateColors();
+}
+
+function switchTwin(k) {
+    currentTwin = k;
+    document.querySelectorAll('.twin-btn').forEach(function(b){ b.classList.remove('active'); });
+    var el = document.getElementById('twbtn-'+k);
+    if (el) { el.classList.add('active'); el.style.setProperty('--tc', TWINS[k].color); }
+    updateColors();
+    fetchHistory();
+}
+
+function updateColors() {
+    var tw = TWINS[currentTwin];
+    document.getElementById('postBtn').style.background = tw.grad;
+    document.getElementById('updateText').placeholder = tw.label + ' — today enna nadanthuchu, enna feel panre...';
+}
+
+/* ── Post update ── */
+function postUpdate() {
+    var text = document.getElementById('updateText').value.trim();
+    if (!text) return;
+    var btn = document.getElementById('postBtn');
+    btn.disabled = true; btn.textContent = '⏳ Sending...';
+
+    fetch('/daily_update_post', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ twin: currentTwin, update: text })
+    }).then(function(r){ return r.json(); }).then(function(d) {
+        if (d.ok) {
+            document.getElementById('updateText').value = '';
+            btn.textContent = '📝 Twin-க்கு அனுப்பு';
+            btn.disabled = false;
+            // Toast
+            var t = document.getElementById('toast');
+            t.textContent = '✅ ' + TWINS[currentTwin].label + ' twin-க்கு அனுப்பிட்டோம்!';
+            t.classList.add('on');
+            setTimeout(function(){ t.classList.remove('on'); }, 3000);
+            fetchHistory();
+        }
+    }).catch(function(){ btn.textContent='📝 Twin-க்கு அனுப்பு'; btn.disabled=false; });
+}
+
+/* ── Fetch history ── */
+function fetchHistory() {
+    fetch('/daily_updates_get?twin='+currentTwin)
+        .then(function(r){ return r.json(); })
+        .then(function(data){ renderHistory(data); })
+        .catch(function(){});
+}
+
+function renderHistory(data) {
+    var list = document.getElementById('histList');
+    if (!data || !data.length) {
+        list.innerHTML = '<div class="no-hist">இன்னும் updates இல்ல 🌸</div>';
+        return;
+    }
+    list.innerHTML = '';
+    data.forEach(function(u) {
+        var tw = TWINS[u.twin] || TWINS['gobika'];
+        var card = document.createElement('div');
+        card.className = 'hist-card';
+        card.innerHTML =
+            '<span class="hist-twin" style="background:rgba(255,255,255,0.07);color:'+tw.color+';">'+tw.label+'</span>' +
+            '<div class="hist-text">' + escHtml(u.update) + '</div>' +
+            '<div class="hist-meta">' + u.date + ' &nbsp;|&nbsp; ' + u.time + '</div>';
+        list.appendChild(card);
+    });
+}
+
+/* ── All twins history ── */
+function fetchAllHistory() {
+    // Fetch all twins updates for history section
+    var allUpdates = [];
+    var keys = Object.keys(TWINS);
+    var done = 0;
+    keys.forEach(function(k) {
+        fetch('/daily_updates_get?twin='+k)
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                data.forEach(function(d){ d.twin = k; allUpdates.push(d); });
+                done++;
+                if (done === keys.length) {
+                    // Sort by date+time desc
+                    allUpdates.sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); });
+                    renderHistory(allUpdates.slice(0,20));
+                }
+            }).catch(function(){ done++; });
+    });
+}
+
+// PIN verify
+function verifyPin() {
+    var pin = document.getElementById('pinInput').value.trim();
+    if (!pin) return;
+    fetch('/gobika_update_verify', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({pin: pin})
+    }).then(function(r){ return r.json(); }).then(function(d) {
+        if (d.ok) {
+            document.getElementById('pinScreen').classList.add('hide');
+            localStorage.setItem('gobika_auth', '1');
+        } else {
+            document.getElementById('pinError').classList.add('on');
+            document.getElementById('pinInput').value = '';
+        }
+    }).catch(function(){});
+}
+document.getElementById('pinInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') verifyPin();
+});
+
+// Check if already authenticated
+if (localStorage.getItem('gobika_auth') === '1') {
+    document.getElementById('pinScreen').classList.add('hide');
+}
+
+initTwins();
+fetchAllHistory();
+</script>
+</body>
+</html>

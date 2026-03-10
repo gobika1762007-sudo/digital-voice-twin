@@ -1,0 +1,42 @@
+
+MANUAL UPDATE INSTRUCTIONS (auto-update fail ஆனா இதை follow பண்ணுங்க)
+========================================================================
+
+1. app.py-ல இந்த line-ஐ REMOVE பண்ணுங்க:
+   from TTS.api import TTS
+
+2. அதுக்கு பதிலா ADD பண்ணுங்க:
+   import edge_tts
+   import asyncio
+
+3. இந்த block-ஐ REMOVE பண்ணுங்க:
+   tts = TTS(
+       model_name="tts_models/...",
+       gpu=False,
+   )
+
+4. அதுக்கு பதிலா ADD பண்ணுங்க:
+   TWIN_VOICES = {
+       "gobika":  "en-IN-NeerjaNeural",
+       "teacher": "en-IN-NeerjaExpressiveNeural",
+       "warden":  "en-IN-PrabhatNeural",
+       "shop":    "en-IN-NeerjaNeural",
+       "coach":   "en-IN-PrabhatNeural",
+   }
+   DEFAULT_VOICE = "en-IN-NeerjaNeural"
+
+5. generate_voice() function-ஐ இப்படி மாத்துங்க:
+
+   def generate_voice(text: str, voice_file: str) -> bool:
+       output_path = "static/reply.wav"
+       try:
+           twin_name = os.path.splitext(os.path.basename(voice_file))[0]
+           voice = TWIN_VOICES.get(twin_name, DEFAULT_VOICE)
+           async def _speak():
+               communicate = edge_tts.Communicate(text=text, voice=voice)
+               await communicate.save(output_path)
+           asyncio.run(_speak())
+           return True
+       except Exception as e:
+           print(f"TTS error: {e}")
+           return False
