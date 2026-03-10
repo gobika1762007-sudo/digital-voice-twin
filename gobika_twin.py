@@ -166,7 +166,11 @@ def _groq_reply(msg):
 
 IMPORTANT CONTEXT — Real Gobika's latest update: {daily_ctx}
 
-If the user asks what you are doing, how you feel, where you went, what happened today, or any personal question — naturally weave this update into your reply as if it's your real life. Don't quote it directly, just talk about it casually like a friend would. If the question is unrelated, ignore the context."""
+If the user asks personal questions like what you are doing, how you feel, where you went, what happened today — use ONLY this update to answer. Do not add or imagine anything extra beyond what is in the update. If the question is unrelated to the update, just respond normally."""
+        else:
+            system_prompt += """
+
+IMPORTANT: If the user asks personal questions like what you are doing, where you are, what you ate, what happened today — say you are busy or will share later. Do NOT make up or imagine any personal details. Example: "Konjam busy-ah irukken da, apram solren!" """
 
         r = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
