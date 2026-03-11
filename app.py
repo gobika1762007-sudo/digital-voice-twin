@@ -222,8 +222,6 @@ def chat():
                 "ts":          _time.time()
             })
             # Save to DB
-            save_message(session.get("user_id",""), twin_name, "user", user_msg)
-            save_message(session.get("user_id",""), twin_name, "bot", ai_reply)
             user_id = session["user_id"]
             save_message(user_id, twin_name, "user", user_msg)
             # Send waiting message — no AI reply yet
