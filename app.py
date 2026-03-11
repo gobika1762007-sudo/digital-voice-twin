@@ -120,8 +120,33 @@ def save_message(user_id, twin, sender, message):
     conn.close()
 
 # ── TTS voice generation with emotion ────────────────────────────────────────
+def clean_for_tts(text):
+    import re
+    # Remove only emojis (keep Tamil, English, punctuation)
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"
+        u"\U0001F300-\U0001F5FF"
+        u"\U0001F680-\U0001F6FF"
+        u"\U0001F1E0-\U0001F1FF"
+        u"\U00002600-\U000027BF"
+        u"\U0001F900-\U0001F9FF"
+        "]+", flags=re.UNICODE)
+    result = emoji_pattern.sub("", text)
+    result = re.sub(r"\[.*?\]", "", result)
+    result = " ".join(result.split())
+    return result.strip()
+
+
 def generate_voice(text: str, twin_name: str, emotion: dict) -> bool:
-    output_path = "/tmp/reply.wav"
+    import platform, os
+    text = clean_for_tts(text)
+    if not text:
+        return False
+    if platform.system() == "Windows":
+        os.makedirs("C:/tmp", exist_ok=True)
+        output_path = "C:/tmp/reply.wav"
+    else:
+        output_path = "/tmp/reply.wav"
     try:
         voice    = TWIN_VOICES.get(twin_name, DEFAULT_VOICE)
         rate     = emotion.get("rate",  "+0%")
@@ -217,8 +242,31 @@ def chat():
                 "timeout_sec": 120,
             })
 
+    # Build chat history for context (last 6 exchanges)
+    chat_history = []
+    try:
+        conn2 = get_db()
+        cur2  = conn2.cursor()
+        uid   = session.get("user_id", "")
+        cur2.execute(
+            "SELECT sender, message FROM chat_history WHERE user_id=? AND twin=? ORDER BY rowid DESC LIMIT 12",
+            (uid, twin_name)
+        )
+        rows = cur2.fetchall()
+        conn2.close()
+        rows.reverse()
+        i = 0
+        while i < len(rows) - 1:
+            if rows[i][0] == "user" and rows[i+1][0] == "bot":
+                chat_history.append({"user": rows[i][1], "bot": rows[i+1][1]})
+                i += 2
+            else:
+                i += 1
+    except Exception:
+        chat_history = []
+
     # Get reply from twin
-    bot_reply = twin_module.get_reply(user_msg)
+    bot_reply = twin_module.get_reply(user_msg, history=chat_history) if twin_name == "gobika" else twin_module.get_reply(user_msg)
 
     # Teacher twin — JSON steps return பண்ணும், emotion skip
     import json as _json
@@ -353,9 +401,9 @@ def test_voice(twin_name):
 # ── Audio serve route (works on Render via /tmp) ─────────────────────────────
 @app.route("/audio/reply.wav")
 def serve_audio():
-    import os
+    import os, platform
     from flask import send_file
-    path = "/tmp/reply.wav"
+    path = "C:/tmp/reply.wav" if platform.system() == "Windows" else "/tmp/reply.wav"
     if os.path.exists(path):
         return send_file(path, mimetype="audio/wav")
     return "", 404

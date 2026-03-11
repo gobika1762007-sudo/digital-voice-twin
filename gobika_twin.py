@@ -59,7 +59,7 @@ Act as Gobika's thinking partner and digital twin — helping her explore ideas,
 
 Personality:
 - Super jolly and energetic
-- Uses Tamil slang naturally: "da", "di", "ma", "aeii", "ayyo", "seri", "illa", "nalla", "romba", "konjam", "paaruda"
+- Uses Tamil slang naturally: "la", "di", "ma", "aeii", "ayyo", "seri", "illa", "nalla", "romba", "konjam", "paaruda"
 - Occasionally uses emojis but not too much
 - Gives genuine friendly advice like a best friend would
 - Keeps replies SHORT and natural — 2-3 sentences max
@@ -138,22 +138,25 @@ def _search_dataset(msg):
     return None
 
 def _get_daily_context():
-    """DB-லிருந்து Gobika-ஓட latest daily update எடுக்கும்"""
+    """DB-லிருந்து Gobika-ஓட TODAY's daily update மட்டும் எடுக்கும்"""
     try:
+        from datetime import datetime
+        today = datetime.now().strftime("%d-%m-%Y")
         conn = sqlite3.connect(DB_NAME)
         cur  = conn.cursor()
         cur.execute(
-            "SELECT content, date, time FROM daily_updates WHERE twin='gobika' ORDER BY date DESC, time DESC LIMIT 1"
+            "SELECT content, date, time FROM daily_updates WHERE twin='gobika' AND date=? ORDER BY time DESC LIMIT 1",
+            (today,)
         )
-        row = conn.fetchone() if False else cur.fetchone()
+        row = cur.fetchone()
         conn.close()
         if row:
             return f'[Real Gobika today\'s update: "{row[0]}" ({row[1]} {row[2]})]'
-        return ""
+        return ""  # No update today
     except:
         return ""
 
-def _groq_reply(msg):
+def _groq_reply(msg, history=None):
     """Groq AI — daily context + Gobika personality-ல reply"""
     try:
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -164,43 +167,89 @@ def _groq_reply(msg):
         if daily_ctx:
             system_prompt += f"""
 
-IMPORTANT CONTEXT — Real Gobika's latest update: {daily_ctx}
+TODAY'S REAL UPDATE FROM GOBIKA: {daily_ctx}
 
-If the user asks personal questions like what you are doing, how you feel, where you went, what happened today — use ONLY this update to answer. Do not add or imagine anything extra beyond what is in the update. If the question is unrelated to the update, just respond normally."""
+RULES:
+1. Use this update naturally in your replies when relevant.
+2. If user asks what you did today, where you went, how you feel — answer using ONLY this update. Do not add anything extra.
+3. For all other questions (tech, fun, general) — just reply normally as Gobika.
+4. Never say "according to my update" — just talk naturally like a friend."""
         else:
             system_prompt += """
 
-IMPORTANT: If the user asks personal questions like what you are doing, where you are, what you ate, what happened today — say you are busy or will share later. Do NOT make up or imagine any personal details. Example: "Konjam busy-ah irukken da, apram solren!" """
+You have NO information about today's activities. No daily update available.
+PERSONAL QUESTION RULE: If the user asks about what you did today, where you went, what you ate, your location, your plans — reply ONLY with: "Konjam busy-ah irukken da, apram solren!" — nothing else.
+ALL OTHER QUESTIONS: Reply normally as Gobika — fun, casual, helpful Tanglish friend."""
+
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # Add last 6 messages for context
+        if history:
+            for h in history[-6:]:
+                messages.append({"role": "user",      "content": h.get("user", "")})
+                messages.append({"role": "assistant", "content": h.get("bot",  "")})
+
+        messages.append({"role": "user", "content": msg})
 
         r = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             max_tokens=150,
-            temperature=0.85,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": msg}
-            ]
+            temperature=0.75,
+            messages=messages
         )
         return r.choices[0].message.content.strip()
     except Exception as e:
         print(f"Gobika Groq error: {e}")
         return None
 
-def get_reply(msg):
-    msg_clean = msg.lower().strip()
+# Personal activity keywords — no update = busy reply
+PERSONAL_KEYWORDS = [
+    "saptiya","sapdala","saptu","sapda","sapta","saptinga","saptenga",
+    "park","beach","theatre","mall","kadai",
+    "enga iruka","enga irruka","enga po","enga poninga",
+    "epdi iruka","epdi irukka","eppadi iruka",
+    "ena pandra","enna pandra","ena panra","enna panra",
+    "ena panre","enna panre","en pandra","en panra",
+    "today","iniku","inika","ingiku",
+    "evng","evening","morning","afternoon","mathiyam","rathiri",
+    "what are you doing","what did you do","where are you","where did you go",
+    "what did you eat","did you go","did you eat",
+    "pandra","panra","panre","panrom","pannre"
+]
 
-    # Step 1: Dataset match — fast exact reply
-    dataset_reply = _search_dataset(msg_clean)
-    if dataset_reply:
-        return dataset_reply
+def _is_personal_question(msg):
+    msg_l = msg.lower()
+    return any(kw in msg_l for kw in PERSONAL_KEYWORDS)
 
-    # Step 2: Groq AI — human-like reply with daily context
+def get_reply(msg, history=None):
+    daily_ctx = _get_daily_context()
+
+    # Personal question — no update = busy reply (no Groq)
+    if _is_personal_question(msg) and not daily_ctx:
+        busy = [
+            "Konjam busy-ah irukken da, apram solren! 😊",
+            "Ippo solla mudiyala da, later pesalam!",
+            "Aeiiii, apram kelu da — ippo time illa! 😄",
+        ]
+        import random
+        return random.choice(busy)
+
+    # Groq AI — natural reply with context
     if os.getenv("GROQ_API_KEY"):
-        groq_reply = _groq_reply(msg)
+        groq_reply = _groq_reply(msg, history=history)
         if groq_reply:
+            # If no daily update but reply contains personal activities — override
+            if not daily_ctx:
+                personal_check = ["park","beach","sapdala","saptu","mall","theatre","mathiyam sapdala","evng","morning ponen","rathiri"]
+                if any(kw in groq_reply.lower() for kw in personal_check):
+                    import random
+                    return random.choice([
+                        "Konjam busy-ah irukken da, apram solren! 😊",
+                        "Ippo solla mudiyala da, later pesalam!",
+                        "Aeiiii, apram kelu da — ippo time illa! 😄",
+                    ])
             return groq_reply
 
-    # Step 3: Fallback
     return _get_fallback()
 
 def get_voice_file():
