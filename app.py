@@ -121,7 +121,7 @@ def save_message(user_id, twin, sender, message):
 
 # ── TTS voice generation with emotion ────────────────────────────────────────
 def generate_voice(text: str, twin_name: str, emotion: dict) -> bool:
-    output_path = "static/reply.wav"
+    output_path = "/tmp/reply.wav"
     try:
         voice    = TWIN_VOICES.get(twin_name, DEFAULT_VOICE)
         rate     = emotion.get("rate",  "+0%")
@@ -349,6 +349,16 @@ def test_voice(twin_name):
     ok = generate_voice("Vanakkam! Testing voice.", twin_module.get_voice_file())
     return jsonify({"status": "ok" if ok else "failed", "twin": twin_name})
 
+
+# ── Audio serve route (works on Render via /tmp) ─────────────────────────────
+@app.route("/audio/reply.wav")
+def serve_audio():
+    import os
+    from flask import send_file
+    path = "/tmp/reply.wav"
+    if os.path.exists(path):
+        return send_file(path, mimetype="audio/wav")
+    return "", 404
 
 # ── Gobika real-time dashboard routes ────────────────────────────────────────
 

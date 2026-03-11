@@ -164,23 +164,26 @@ function speakText(text) {
     if (!text) return;
     var clean = cleanText(text);
     if (!clean) return;
+    // Cancel then delay to avoid block
     speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(clean);
-    u.lang = "en-IN";
-    u.rate = 0.9;
-    u.pitch = 1.1;
-    var voices = speechSynthesis.getVoices();
-    var v = null;
-    for (var i = 0; i < voices.length; i++) {
-        if (voices[i].lang === "en-IN") { v = voices[i]; break; }
-    }
-    if (!v) {
+    setTimeout(function() {
+        var u = new SpeechSynthesisUtterance(clean);
+        u.lang = "en-IN";
+        u.rate = 0.9;
+        u.pitch = 1.1;
+        var voices = speechSynthesis.getVoices();
+        var v = null;
         for (var i = 0; i < voices.length; i++) {
-            if (voices[i].name.toLowerCase().indexOf("india") !== -1) { v = voices[i]; break; }
+            if (voices[i].lang === "en-IN") { v = voices[i]; break; }
         }
-    }
-    if (v) u.voice = v;
-    speechSynthesis.speak(u);
+        if (!v) {
+            for (var i = 0; i < voices.length; i++) {
+                if (voices[i].name.toLowerCase().indexOf("india") !== -1) { v = voices[i]; break; }
+            }
+        }
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+    }, 100);
 }
 
 // Speak steps one by one — queue based
@@ -308,8 +311,11 @@ async function sendText(customText) {
 
             if (parsed && parsed.steps && parsed.steps.length > 0) {
                 // Browser TTS for first step
-                if (parsed.steps[0] && parsed.steps[0].speak)
-                    speakText(parsed.steps[0].speak);
+                var audio4 = new Audio("/audio/reply.wav?t=" + Date.now());
+                audio4.play().catch(function() {
+                    if (parsed.steps[0] && parsed.steps[0].speak)
+                        speakText(parsed.steps[0].speak);
+                });
                 renderTeacherSteps(parsed.steps);
                 return;
             }
@@ -330,7 +336,8 @@ async function sendText(customText) {
         msgs.appendChild(msgDiv);
         msgs.scrollTop = msgs.scrollHeight;
 
-        speakText(cleanText(data.reply));
+        var audio = new Audio("/audio/reply.wav?t=" + Date.now());
+        audio.play().catch(function() { speakText(cleanText(data.reply)); });
 
     } catch(err) {
         hideTyping();
@@ -361,7 +368,8 @@ if (speechSynthesis.onvoiceschanged !== undefined)
                             // Real Gobika replied!
                             waitDiv.className = "msg bot";
                             waitDiv.innerHTML = '🌸 <strong>Gobika:</strong> ' + queue[i].human_reply;
-                            speakText(queue[i].human_reply);
+                            var audio2 = new Audio("/audio/reply.wav?t=" + Date.now());
+                    audio2.play().catch(function() { speakText(queue[i].human_reply); });
                             return;
                         }
                     }
@@ -370,7 +378,8 @@ if (speechSynthesis.onvoiceschanged !== undefined)
                         clearInterval(interval);
                         waitDiv.className = "msg bot";
                         waitDiv.innerText = aiReply || "Gobika ippo busy da! Apram pesuva!";
-                        speakText(aiReply || "Gobika ippo busy da!");
+                        var audio3 = new Audio("/audio/reply.wav?t=" + Date.now());
+                        audio3.play().catch(function() { speakText(aiReply || "Gobika ippo busy da!"); });
                     }
                 });
         }, 3000);
