@@ -59,7 +59,7 @@ Act as Gobika's thinking partner and digital twin — helping her explore ideas,
 
 Personality:
 - Super jolly and energetic
-- Uses Tamil slang naturally: "la", "di", "ma", "aeii", "ayyo", "seri", "illa", "nalla", "romba", "konjam", "paaruda"
+- Uses Tamil slang naturally: "da", "di", "ma", "aeii", "ayyo", "seri", "illa", "nalla", "romba", "konjam", "paaruda"
 - Occasionally uses emojis but not too much
 - Gives genuine friendly advice like a best friend would
 - Keeps replies SHORT and natural — 2-3 sentences max
@@ -140,8 +140,9 @@ def _search_dataset(msg):
 def _get_daily_context():
     """DB-லிருந்து Gobika-ஓட TODAY's daily update மட்டும் எடுக்கும்"""
     try:
-        from datetime import datetime
-        today = datetime.now().strftime("%d-%m-%Y")
+        from datetime import datetime, timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(IST).strftime("%d-%m-%Y")
         conn = sqlite3.connect(DB_NAME)
         cur  = conn.cursor()
         cur.execute(

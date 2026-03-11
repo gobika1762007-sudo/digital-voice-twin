@@ -105,7 +105,9 @@ def init_db():
     conn.close()
 
 def get_date_time():
-    now = datetime.now()
+    from datetime import timezone, timedelta
+    IST = timezone(timedelta(hours=5, minutes=30))
+    now = datetime.now(IST)
     return now.strftime("%d-%m-%Y"), now.strftime("%I:%M %p")
 
 def save_message(user_id, twin, sender, message):
