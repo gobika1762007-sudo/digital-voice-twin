@@ -221,13 +221,9 @@ def chat():
                 "status":      "pending",
                 "ts":          _time.time()
             })
-            # Save to chat history too
-            chat_history.append({
-                "twin":      twin_name,
-                "user_msg":  user_msg,
-                "bot_reply": ai_reply,
-                "ts":        _time.time()
-            })
+            # Save to DB
+            save_message(session.get("user_id",""), twin_name, "user", user_msg)
+            save_message(session.get("user_id",""), twin_name, "bot", ai_reply)
             user_id = session["user_id"]
             save_message(user_id, twin_name, "user", user_msg)
             # Send waiting message — no AI reply yet
@@ -423,7 +419,7 @@ HUMAN_TRIGGERS = [
     # Meet / contact
     "meet", "appointment", "call", "contact", "talk to",
     "real gobika", "phone", "number", "insta", "address",
-    "meet pana", "meet pannalam", "pesanum", "pesalama",
+    "meet pana", "meet pannalam", "meet panalama", "pesanum", "pesalama", "panalama", "panalamaa",
     # Timing questions
     "pm", "am", "time", "timing", "eppo", "eppadi",
     "nalaki", "tomorrow", "today", "naal", "manikku",
