@@ -168,19 +168,17 @@ def _groq_reply(msg, history=None):
         if daily_ctx:
             system_prompt += f"""
 
-TODAY'S REAL UPDATE FROM GOBIKA: {daily_ctx}
+TODAY'S REAL UPDATE: {daily_ctx}
 
 RULES:
-1. Use this update naturally in your replies when relevant.
-2. If user asks what you did today, where you went, how you feel — answer using ONLY this update. Do not add anything extra.
-3. For all other questions (tech, fun, general) — just reply normally as Gobika.
-4. Never say "according to my update" — just talk naturally like a friend."""
+1. If the user asks personal questions (what you did, where you went, what you ate, how you feel today) — answer ONLY using this update. Do not add extra details not in the update.
+2. If the update does not contain the answer to their personal question — say "Apram solren da, ippo busy!" 
+3. For all other questions — reply normally as Gobika.
+4. Speak naturally — never quote the update directly."""
         else:
             system_prompt += """
 
-You have NO information about today's activities. No daily update available.
-PERSONAL QUESTION RULE: If the user asks about what you did today, where you went, what you ate, your location, your plans — reply ONLY with: "Konjam busy-ah irukken da, apram solren!" — nothing else.
-ALL OTHER QUESTIONS: Reply normally as Gobika — fun, casual, helpful Tanglish friend."""
+You have NO personal update for today. For all non-personal questions reply normally as Gobika."""
 
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -204,54 +202,47 @@ ALL OTHER QUESTIONS: Reply normally as Gobika — fun, casual, helpful Tanglish 
         return None
 
 # Personal activity keywords — no update = busy reply
-PERSONAL_KEYWORDS = [
-    "saptiya","sapdala","saptu","sapda","sapta","saptinga","saptenga",
-    "park","beach","theatre","mall","kadai",
-    "enga iruka","enga irruka","enga po","enga poninga",
-    "epdi iruka","epdi irukka","eppadi iruka",
-    "ena pandra","enna pandra","ena panra","enna panra",
-    "ena panre","enna panre","en pandra","en panra",
-    "today","iniku","inika","ingiku",
-    "evng","evening","morning","afternoon","mathiyam","rathiri",
-    "what are you doing","what did you do","where are you","where did you go",
-    "what did you eat","did you go","did you eat",
-    "pandra","panra","panre","panrom","pannre"
-]
-
 def _is_personal_question(msg):
+    """Check if user is asking about personal activities/location/food"""
+    keywords = [
+        "saptiya","sapdala","saptu","sapda","sapta","saptinga","saptenga",
+        "enga iruka","enga po","enga poninga","epdi iruka","eppadi iruka",
+        "ena pandra","enna pandra","ena panra","enna panra",
+        "ena panre","enna panre","en pandra",
+        "iniku","inika","ingiku","today",
+        "evng","evening","morning","afternoon","mathiyam","rathiri",
+        "what are you doing","what did you do","where are you","where did you go",
+        "what did you eat","did you go","did you eat"
+    ]
     msg_l = msg.lower()
-    return any(kw in msg_l for kw in PERSONAL_KEYWORDS)
+    return any(kw in msg_l for kw in keywords)
 
 def get_reply(msg, history=None):
     daily_ctx = _get_daily_context()
 
-    # Personal question — no update = busy reply (no Groq)
+    # Personal question with no update today → busy reply, skip Groq
     if _is_personal_question(msg) and not daily_ctx:
-        busy = [
+        import random
+        return random.choice([
             "Konjam busy-ah irukken da, apram solren! 😊",
             "Ippo solla mudiyala da, later pesalam!",
             "Aeiiii, apram kelu da — ippo time illa! 😄",
-        ]
-        import random
-        return random.choice(busy)
+        ])
 
-    # Groq AI — natural reply with context
+    # Groq AI — if update exists, it will answer personal questions from update
+    # if no personal question, normal reply
     if os.getenv("GROQ_API_KEY"):
         groq_reply = _groq_reply(msg, history=history)
         if groq_reply:
-            # If no daily update but reply contains personal activities — override
+            # Safety check — if no update but reply has made-up personal activities
             if not daily_ctx:
-                personal_check = ["park","beach","sapdala","saptu","mall","theatre","mathiyam sapdala","evng","morning ponen","rathiri"]
-                if any(kw in groq_reply.lower() for kw in personal_check):
+                hallucinate_check = ["park","beach","sapdala","saptu","mall","theatre","mathiyam sapdala","evng ponen","morning ponen","rathiri ponen"]
+                if any(kw in groq_reply.lower() for kw in hallucinate_check):
                     import random
                     return random.choice([
                         "Konjam busy-ah irukken da, apram solren! 😊",
                         "Ippo solla mudiyala da, later pesalam!",
-                        "Aeiiii, apram kelu da — ippo time illa! 😄",
                     ])
             return groq_reply
 
     return _get_fallback()
-
-def get_voice_file():
-    return VOICE_FILE
