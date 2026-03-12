@@ -1,59 +1,53 @@
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import os
+from groq import Groq
 
-DATASET_PATH = "shop_dataset.csv"
-VOICE_FILE   = "shop.wav"
-FALLBACK_MSG = "Athu stock illai ma! Vera enna venum?"
+_client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
 
-def _load_df():
-    try:
-        df = pd.read_csv(DATASET_PATH, on_bad_lines="skip")
-        df["question"] = df["question"].astype(str).str.lower().str.strip()
-        df["answer"]   = df["answer"].astype(str).str.strip()
-        return df
-    except:
-        return pd.DataFrame(columns=["question","answer"])
+SYSTEM_PROMPT = """You are a friendly Tamil kadai (shop) owner twin speaking Tanglish (Tamil + English mixed).
+You run a local grocery/general store. Reply naturally like a helpful shop owner.
 
-_df = _load_df()
-_vectorizer = None
-_X = None
+Rules:
+- Always reply in Tanglish (mix of Tamil and English)
+- Keep replies short and helpful (1-3 sentences)
+- For items you have: give price and availability
+- For items you don't have: suggest alternatives politely
+- Use words like: "ma", "da", "anna", "akka", "stock iruku", "fresh-ah iruku", "naalaikku vaanga"
+- Never use emoji in replies
+- Do NOT make up specific prices unless asked, say "reasonable price-la kudukiren"
 
-def _build_index():
-    global _vectorizer, _X
-    if _df.empty: return
-    _vectorizer = TfidfVectorizer(ngram_range=(1,2))
-    _X = _vectorizer.fit_transform(_df["question"].tolist())
+Examples:
+User: tomato price
+Bot: Tomato fresh-ah iruku ma, kilo 40 rupaykku. Enga vaanga!
 
-_build_index()
+User: onion stock iruka
+Bot: Aa ma, onion nalla stock iruku. Big size kilo 35-ku kedaikum.
 
-def _search(msg):
-    if _df.empty or _vectorizer is None:
-        return FALLBACK_MSG
+User: brinjal
+Bot: Kathirikaai iruku ma! Today fresh-ah vanduchu, kilo 30 rupaykku.
+"""
 
-    # Step 1: Exact match
-    exact = _df[_df["question"] == msg]
-    if not exact.empty:
-        return exact.iloc[0]["answer"]
-
-    # Step 2: Partial match
-    partial = _df[_df["question"].str.contains(msg, regex=False, na=False)]
-    if not partial.empty:
-        return partial.iloc[0]["answer"]
-
-    # Step 3: TF-IDF with threshold 0.3
-    try:
-        s = cosine_similarity(_vectorizer.transform([msg]), _X)
-        i = s.argmax()
-        if s[0][i] >= 0.3:
-            return _df.iloc[i]["answer"]
-    except:
-        pass
-
-    return FALLBACK_MSG
+_history = []
 
 def get_reply(msg):
-    return _search(msg.lower().strip())
+    global _history
+    
+    _history.append({"role": "user", "content": msg})
+    if len(_history) > 12:
+        _history = _history[-12:]
+    
+    try:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + _history
+        resp = _client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            max_tokens=150,
+            temperature=0.7
+        )
+        reply = resp.choices[0].message.content.strip()
+        _history.append({"role": "assistant", "content": reply})
+        return reply
+    except Exception as e:
+        return f"Konjam wait panunga ma, system busy-ah iruku!"
 
 def get_voice_file():
-    return VOICE_FILE
+    return "shop.wav"
