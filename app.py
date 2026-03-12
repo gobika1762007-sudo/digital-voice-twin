@@ -83,6 +83,17 @@ def init_db():
         )
     """)
     c.execute("""
+        CREATE TABLE IF NOT EXISTS gobika_queue_db (
+            id           TEXT PRIMARY KEY,
+            twin         TEXT,
+            user_msg     TEXT,
+            ai_reply     TEXT,
+            human_reply  TEXT,
+            status       TEXT DEFAULT 'pending',
+            ts           REAL
+        )
+    """)
+    c.execute("""
         CREATE TABLE IF NOT EXISTS daily_updates (
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
             twin     TEXT,
@@ -212,7 +223,7 @@ def chat():
             msg_id = str(int(_time.time() * 1000))
             # Get AI reply (used only if Gobika doesn't reply in time)
             ai_reply = twin_module.get_reply(user_msg)
-            gobika_queue.append({
+            new_item = {
                 "id":          msg_id,
                 "twin":        twin_name,
                 "user_msg":    user_msg,
@@ -220,8 +231,12 @@ def chat():
                 "human_reply": None,
                 "status":      "pending",
                 "ts":          _time.time()
-            })
+            }
+            gobika_queue.append(new_item)
+            _queue_save(new_item)
             # Save to DB
+            save_message(session.get("user_id",""), twin_name, "user", user_msg)
+            save_message(session.get("user_id",""), twin_name, "bot", ai_reply)
             user_id = session["user_id"]
             save_message(user_id, twin_name, "user", user_msg)
             # Send waiting message — no AI reply yet
@@ -411,7 +426,33 @@ def serve_audio():
 chat_history = []  # {twin, user_msg, bot_reply, ts}
 
 # ── Gobika Real-time Human Reply System ──────────────────────────────────────
-gobika_queue = []
+gobika_queue = []  # in-memory cache
+
+def _queue_save(item):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""INSERT OR REPLACE INTO gobika_queue_db
+        (id, twin, user_msg, ai_reply, human_reply, status, ts)
+        VALUES (?,?,?,?,?,?,?)""",
+        (item["id"], item["twin"], item["user_msg"], item["ai_reply"],
+         item.get("human_reply"), item["status"], item["ts"]))
+    conn.commit()
+    conn.close()
+
+def _queue_load():
+    global gobika_queue
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id,twin,user_msg,ai_reply,human_reply,status,ts FROM gobika_queue_db ORDER BY ts DESC LIMIT 50")
+        rows = cur.fetchall()
+        conn.close()
+        gobika_queue = [{"id":r[0],"twin":r[1],"user_msg":r[2],"ai_reply":r[3],
+                         "human_reply":r[4],"status":r[5],"ts":r[6]} for r in rows]
+    except:
+        gobika_queue = []
+
+_queue_load()  # Load on startup
 
 HUMAN_TRIGGERS = [
     # Meet / contact
@@ -537,6 +578,7 @@ def gobika_reply():
         if item["id"] == msg_id:
             item["human_reply"] = reply
             item["status"]      = "answered"
+            _queue_save(item)
             emotion = detect_emotion(reply)
             generate_voice(reply, "gobika", emotion)
             return jsonify({"ok": True, "reply": reply})
