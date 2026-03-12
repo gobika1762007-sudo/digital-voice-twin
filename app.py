@@ -44,10 +44,7 @@ SMTP_SERVER        = "smtp.gmail.com"
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24))
 
-# Init DB on startup (works with both flask run and gunicorn)
-with app.app_context():
-    init_db()
-    _queue_load()
+
 
 # ── Edge TTS voices per twin ─────────────────────────────────────────────────
 TWIN_VOICES = {
@@ -72,6 +69,11 @@ DEFAULT_TWIN = "teacher"
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DB_NAME = "chat.db"
+
+def get_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -119,6 +121,9 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+
+# Run DB init immediately after definition
+init_db()
 
 def get_date_time():
     from datetime import timezone, timedelta
@@ -472,6 +477,8 @@ HUMAN_TRIGGERS = [
     "come", "varuva", "varuviya", "varalama",
 ]
 
+_queue_load()  # Load queue from DB
+
 @app.route("/daily_update_post", methods=["POST"])
 def daily_update_post():
     data   = request.json
@@ -568,6 +575,8 @@ def gobika_dashboard():
 
 @app.route("/gobika_pending", methods=["GET"])
 def gobika_pending():
+    # Always load fresh from DB
+    _queue_load()
     return jsonify(gobika_queue)
 
 @app.route("/gobika_reply", methods=["POST"])

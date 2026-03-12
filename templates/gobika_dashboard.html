@@ -269,8 +269,14 @@ function fetchUpdates() {
 
 /* ── Helpers ── */
 function escHtml(t) { if(!t)return''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtTime(ts) { return new Date(ts*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
-function dateKey(ts) { var d=new Date(ts*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtTime(ts) { var ms=ts>1e10?ts:ts*1000; return new Date(ms).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}); }
+function dateKey(ts) { 
+    // Handle both epoch seconds and milliseconds
+    var ms = ts > 1e10 ? ts : ts * 1000;
+    var ist = ms + (5.5 * 3600 * 1000);
+    var d = new Date(ist);
+    return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+}
 function fmtDateLabel(k) { var d=new Date(k+'T00:00:00'); return { dn:d.getDate(), dm:d.toLocaleDateString('en-IN',{month:'short'})+' '+d.getFullYear() }; }
 
 /* ── Sidebar ── */
@@ -396,6 +402,27 @@ function sendReply(msgId) {
 }
 
 /* ── Poll ── */
+// ── Push Notifications ───────────────────────────────────────
+var _lastPendingCount = 0;
+
+function requestNotificationPermission() {
+    if ("Notification" in window) {
+        Notification.requestPermission();
+    }
+}
+
+function sendNotification(msg) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        var n = new Notification("🌸 New Message for Gobika!", {
+            body: msg,
+            icon: "/static/gobika_icon.png",
+            badge: "/static/gobika_icon.png",
+            vibrate: [200, 100, 200]
+        });
+        n.onclick = function() { window.focus(); n.close(); };
+    }
+}
+
 function poll() {
     // Pending
     fetch('/gobika_pending').then(function(r){return r.json();}).then(function(data){
@@ -414,12 +441,29 @@ function poll() {
         // Notify new
         var newPending=(grouped[currentTwin]||[]).filter(function(m){return m.status==='pending';}).length;
         var oldPending=(pendingData[currentTwin]||[]).filter(function(m){return m.status==='pending';}).length;
-        if(newPending>oldPending && oldPending>=0){
+        // Count ALL twins pending
+        var totalNew = 0;
+        var newMsg = '';
+        Object.keys(grouped).forEach(function(k) {
+            var np = (grouped[k]||[]).filter(function(m){return m.status==='pending';}).length;
+            var op = (pendingData[k]||[]).filter(function(m){return m.status==='pending';}).length;
+            if (np > op) {
+                totalNew += (np - op);
+                var lastMsg = grouped[k].filter(function(m){return m.status==='pending';});
+                if (lastMsg.length) newMsg = lastMsg[lastMsg.length-1].user_msg || '';
+            }
+        });
+
+        if(totalNew > 0) {
             var tw=TWINS[currentTwin];
             var bar=document.getElementById('notifBar');
-            bar.style.background=tw.grad; bar.textContent='🔔 '+TWINS[currentTwin].label+' — New message!';
-            bar.classList.add('on'); setTimeout(function(){bar.classList.remove('on');},3000);
-            if(navigator.vibrate)navigator.vibrate([200,100,200]);
+            bar.style.background=tw.grad;
+            bar.textContent='🔔 New message: ' + (newMsg.substring(0,40) || 'Check pending!');
+            bar.classList.add('on');
+            setTimeout(function(){bar.classList.remove('on');},4000);
+            if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]);
+            // Browser push notification
+            sendNotification(newMsg || 'New message waiting for reply!');
         }
 
         if(JSON.stringify(grouped)!==JSON.stringify(pendingData)){
@@ -439,6 +483,7 @@ function poll() {
 
 initTabs();
 setTwinColor(currentTwin);
+requestNotificationPermission();
 poll();
 setInterval(poll,4000);
 </script>
