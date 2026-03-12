@@ -44,6 +44,11 @@ SMTP_SERVER        = "smtp.gmail.com"
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24))
 
+# Init DB on startup (works with both flask run and gunicorn)
+with app.app_context():
+    init_db()
+    _queue_load()
+
 # ── Edge TTS voices per twin ─────────────────────────────────────────────────
 TWIN_VOICES = {
     "gobika":  "en-IN-NeerjaNeural",
@@ -451,8 +456,6 @@ def _queue_load():
                          "human_reply":r[4],"status":r[5],"ts":r[6]} for r in rows]
     except:
         gobika_queue = []
-
-_queue_load()  # Load on startup
 
 HUMAN_TRIGGERS = [
     # Meet / contact
