@@ -429,7 +429,7 @@ chat_history = []  # {twin, user_msg, bot_reply, ts}
 gobika_queue = []  # in-memory cache
 
 def _queue_save(item):
-    conn = get_db()
+    conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute("""INSERT OR REPLACE INTO gobika_queue_db
         (id, twin, user_msg, ai_reply, human_reply, status, ts)
@@ -442,7 +442,7 @@ def _queue_save(item):
 def _queue_load():
     global gobika_queue
     try:
-        conn = get_db()
+        conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
         cur.execute("SELECT id,twin,user_msg,ai_reply,human_reply,status,ts FROM gobika_queue_db ORDER BY ts DESC LIMIT 50")
         rows = cur.fetchall()
