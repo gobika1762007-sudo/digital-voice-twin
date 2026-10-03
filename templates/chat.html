@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background-color:#0a0a0a; margin:0; height:100vh; display:flex; justify-content:center; align-items:center; font-family:'Noto Sans Tamil','Segoe UI',sans-serif; color:white; }
+        .chat-container { width:420px; height:700px; background:rgba(20,20,20,0.95); border:1px solid #0fa; border-radius:20px; box-shadow:0 0 20px #0fa; display:flex; flex-direction:column; overflow:hidden; }
+        .header { padding:20px; text-align:center; background:#111; border-bottom:1px solid #0fa; position:relative; }
+        .header h2 { margin:0; font-size:20px; color:#fff; text-shadow:0 0 10px #0fa; }
+        .header p  { margin:4px 0 0; font-size:12px; color:#0fa; opacity:0.7; }
+        .back-btn { position:absolute; left:15px; top:22px; background:transparent; color:#0fa; border:1px solid #0fa; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12px; }
+        .messages { flex:1; padding:15px; overflow-y:auto; background:#000; display:flex; flex-direction:column; }
+        .msg { max-width:80%; padding:12px; margin:10px 0; border-radius:15px; font-size:14px; line-height:1.5; word-wrap:break-word; }
+        .bot  { background:rgba(0,255,170,0.1); color:#0fa; border:1px solid #0fa; align-self:flex-start; border-bottom-left-radius:2px; }
+        .user { background:rgba(255,0,255,0.1); color:#f0f; border:1px solid #f0f; align-self:flex-end; border-bottom-right-radius:2px; text-shadow:0 0 5px #f0f; }
+        .emotion-label { display:inline-block; font-size:10px; padding:2px 8px; border-radius:10px; margin-top:5px; font-family:monospace; letter-spacing:1px; opacity:0.7; }
+        .emotion-happy   { background:rgba(0,255,100,0.15);  color:#0f9; border:1px solid #0f9; }
+        .emotion-funny   { background:rgba(255,200,0,0.15);  color:#fc0; border:1px solid #fc0; }
+        .emotion-sad     { background:rgba(100,150,255,0.15);color:#8af; border:1px solid #8af; }
+        .emotion-angry   { background:rgba(255,60,60,0.15);  color:#f66; border:1px solid #f66; }
+        .emotion-thinking{ background:rgba(200,100,255,0.15);color:#c8f; border:1px solid #c8f; }
+        .emotion-neutral { background:rgba(255,255,255,0.08);color:#888; border:1px solid #555; }
+        .typing-dots { display:flex; gap:5px; padding:14px 18px; align-self:flex-start; }
+        .typing-dots span { width:8px; height:8px; border-radius:50%; background:#0fa; opacity:0.4; animation:blink 1.2s infinite; }
+        .typing-dots span:nth-child(2){animation-delay:0.2s;} .typing-dots span:nth-child(3){animation-delay:0.4s;}
+        @keyframes blink{0%,80%,100%{opacity:0.4;}40%{opacity:1;}}
+        .teacher-step { max-width:90%; align-self:flex-start; background:rgba(10,15,25,0.95); border:1px solid #1e3048; border-radius:12px; padding:10px 14px; margin:6px 0; animation:stepIn 0.3s ease forwards; }
+        @keyframes stepIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+        .step-label { display:inline-block; font-size:10px; font-family:monospace; letter-spacing:1.2px; text-transform:uppercase; padding:2px 8px; border-radius:4px; margin-bottom:6px; font-weight:700; }
+        .step-body { font-size:13.5px; line-height:1.8; color:#c8c4bc; min-height:20px; }
+        .code-block { display:block; background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.1); border-left:3px solid #a78bfa; color:#e2e8f0; font-family:'Courier New',monospace; padding:8px 12px; border-radius:0 6px 6px 0; margin:6px 0; font-size:12px; white-space:pre; overflow-x:auto; line-height:1.6; }
+        .answer-body { color:#4ade80; font-size:14px; font-weight:bold; background:rgba(74,222,128,0.08); border-left:3px solid #4ade80; padding:6px 12px; border-radius:0 6px 6px 0; margin:4px 0; line-height:1.8; }
+        .tip-body { color:#c084fc; border-left:3px solid #c084fc; padding:5px 10px; border-radius:0 6px 6px 0; margin:4px 0; line-height:1.8; }
+        .typing-cursor { display:inline-block; animation:cursorBlink 0.6s infinite; color:#0fa; font-weight:bold; margin-left:2px; }
+        @keyframes cursorBlink{0%,100%{opacity:1;}50%{opacity:0;}}
+        .input-area { display:flex; padding:15px; background:#111; border-top:1px solid #333; }
+        .input-area input { flex:1; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:10px; outline:none; font-family:'Noto Sans Tamil','Segoe UI',sans-serif; }
+        .send-btn { background:rgb(221,0,255); color:black; border:none; padding:10px 15px; margin-left:10px; border-radius:10px; font-weight:bold; cursor:pointer; box-shadow:0 0 10px rgb(208,0,255); transition:opacity 0.2s; }
+        .send-btn:disabled{opacity:0.4;cursor:not-allowed;}
+        .mic-area { text-align:center; padding-bottom:20px; background:#111; }
+        .mic-btn { width:50px; height:50px; border-radius:50%; border:none; background:#222; color:#ff00c3; border:1px solid rgba(255,0,204,0.882); font-size:20px; cursor:pointer; transition:0.3s; box-shadow:0 0 10px rgb(255,0,170); }
+        .mic-btn.recording { background:#f00; color:#fff; border-color:#fff; box-shadow:0 0 20px #f00; animation:pulse 1s infinite; }
+        @keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+        .error-msg{color:#ff6060;border-color:#ff6060!important;background:rgba(255,60,60,0.1)!important;}
+        .lang-bar { display:none; background:#0a0a15; border-bottom:1px solid rgba(56,189,248,0.2); padding:8px 12px; align-items:center; gap:8px; }
+        .lang-bar.tourist-mode { display:flex; }
+        .lang-icon { font-size:16px; }
+        .lang-select { flex:1; background:#0d1117; border:1px solid rgba(56,189,248,0.4); color:#38bdf8; padding:6px 10px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; outline:none; font-family:"Noto Sans Tamil","Segoe UI",sans-serif; }
+        .lang-select option { background:#0d1117; color:#fff; }
+        .scan-area { display:none; text-align:center; padding:8px 15px; background:#111; border-top:1px solid #1a2a1a; }
+        .scan-area.tourist-mode { display:block; }
+        .scan-btn { background:transparent; border:1px solid #38bdf8; color:#38bdf8; padding:8px 16px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; margin:0 5px; transition:0.2s; letter-spacing:0.5px; }
+        .scan-btn:hover { background:rgba(56,189,248,0.15); }
+        .img-msg { align-self:flex-end; background:rgba(56,189,248,0.08); border:1px solid #38bdf8; border-radius:12px; padding:6px; max-width:200px; margin:8px 0; }
+        .img-msg img { max-width:100%; border-radius:8px; display:block; }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='/'">Back</button>
+        <h2 id="twin-title">AI Twin</h2>
+        <p id="twin-sub"></p>
+    </div>
+    <div class="messages" id="msgs"></div>
+    <div class="input-area">
+        <input type="text" id="input" placeholder="Type a message..." onkeypress="handleKey(event)">
+        <button class="send-btn" id="sendBtn" onclick="sendText()">Send</button>
+    </div>
+    <div class="lang-bar" id="langBar">
+        <span class="lang-icon">🌐</span>
+        <select class="lang-select" id="langSelect" onchange="setLang(this.value)">
+            <option value="tanglish">🇮🇳 Tanglish</option>
+            <option value="tamil">தமிழ் Tamil</option>
+            <option value="english">🇬🇧 English</option>
+            <option value="hindi">हिंदी Hindi</option>
+            <option value="telugu">తెలుగు Telugu</option>
+            <option value="kannada">ಕನ್ನಡ Kannada</option>
+            <option value="malayalam">മലയാളം Malayalam</option>
+            <option value="marathi">मराठी Marathi</option>
+            <option value="bengali">বাংলা Bengali</option>
+            <option value="gujarati">ગુજરાતી Gujarati</option>
+            <option value="punjabi">ਪੰਜਾਬੀ Punjabi</option>
+            <option value="odia">ଓଡ଼ିଆ Odia</option>
+            <option value="urdu">اردو Urdu</option>
+            <option value="french">🇫🇷 Français French</option>
+            <option value="german">🇩🇪 Deutsch German</option>
+            <option value="spanish">🇪🇸 Español Spanish</option>
+            <option value="italian">🇮🇹 Italiano Italian</option>
+            <option value="portuguese">🇵🇹 Português Portuguese</option>
+            <option value="russian">🇷🇺 Русский Russian</option>
+            <option value="arabic">🇸🇦 العربية Arabic</option>
+            <option value="chinese">🇨🇳 中文 Chinese</option>
+            <option value="japanese">🇯🇵 日本語 Japanese</option>
+            <option value="korean">🇰🇷 한국어 Korean</option>
+            <option value="dutch">🇳🇱 Nederlands Dutch</option>
+            <option value="turkish">🇹🇷 Türkçe Turkish</option>
+            <option value="thai">🇹🇭 ภาษาไทย Thai</option>
+            <option value="vietnamese">🇻🇳 Tiếng Việt Vietnamese</option>
+            <option value="indonesian">🇮🇩 Bahasa Indonesia</option>
+            <option value="malay">🇲🇾 Bahasa Melayu Malay</option>
+            <option value="swahili">🌍 Kiswahili Swahili</option>
+            <option value="greek">🇬🇷 Ελληνικά Greek</option>
+        </select>
+    </div>
+    <div class="scan-area" id="scanArea">
+        <input type="file" id="imgUpload" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+        <input type="file" id="camCapture" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(event)">
+        <button class="scan-btn" onclick="document.getElementById('camCapture').click()">📷 Camera</button>
+        <button class="scan-btn" onclick="document.getElementById('imgUpload').click()">🖼️ Upload</button>
+    </div>
+    <div class="mic-area">
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎙️</button>
+    </div>
+</div>
+<script>
+var twin = "{{ twin }}";
+var chatHistory = [];
+var twinMeta = {
+    teacher: { label:"PYTHON TEACHER",  sub:"Your Python guide 👩🏻‍💻" },
+    tourist: { label:"TOURIST GUIDE",   sub:"India Explorer 🗺️" },
+};
+var meta = twinMeta[twin] || twinMeta.teacher;
+document.getElementById('twin-title').innerText = meta.label;
+document.getElementById('twin-sub').innerText   = meta.sub;
+
+var msgs    = document.getElementById("msgs");
+var inputEl = document.getElementById("input");
+var sendBtn = document.getElementById("sendBtn");
+var micBtn  = document.getElementById("micBtn");
+
+var welcomes = {
+    teacher: "Vanakkam ! Python la enna doubt? Kelu, naan explain pannuren!👩🏻‍💻 ",
+    tourist: "Namaste! 🗺️ Welcome to India Tourist Guide! Ask me about Taj Mahal, Goa, Kerala, Ladakh, or any place in India! Select your language above and scan a photo to identify any spot!",
+};
+addMsg(welcomes[twin] || "Vanakkam!", "bot");
+
+var recognition, recording = false;
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+    recognition = new SR();
+    recognition.lang = "en-IN";
+    recognition.onstart  = function(){ recording=true;  micBtn.classList.add("recording"); };
+    recognition.onresult = function(e){ sendText(e.results[0][0].transcript); };
+    recognition.onend    = function(){ recording=false; micBtn.classList.remove("recording"); };
+}
+function toggleMic() {
+    if (!recognition) return alert("Chrome browser use pannunga!");
+    recording ? recognition.stop() : recognition.start();
+}
+function handleKey(e) { if (e.key==='Enter') sendText(); }
+
+function escHtml(t) {
+    if (!t) return '';
+    return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function addMsg(text, cls) {
+    var d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.innerHTML = escHtml(text);
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+}
+function showTyping() {
+    var d = document.createElement("div");
+    d.className = "typing-dots"; d.id = "typing";
+    d.innerHTML = "<span></span><span></span><span></span>";
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+function hideTyping() {
+    var t = document.getElementById("typing");
+    if (t) t.remove();
+}
+
+var STEP_COLORS = {
+    intro:   { color:"#38bdf8", bg:"rgba(56,189,248,0.15)"  },
+    concept: { color:"#34d399", bg:"rgba(52,211,153,0.15)"  },
+    work:    { color:"#f97316", bg:"rgba(249,115,22,0.15)"  },
+    answer:  { color:"#4ade80", bg:"rgba(74,222,128,0.15)"  },
+    tip:     { color:"#c084fc", bg:"rgba(192,132,252,0.15)" },
+};
+
+function parseCodeBlocks(text) {
+    if (!text) return "";
+    var html = "";
+    var rem  = text;
+    while (rem.length > 0) {
+        var cs = rem.indexOf("[C]");
+        if (cs === -1) { html += escHtml(rem); break; }
+        html += escHtml(rem.substring(0, cs));
+        var ce = rem.indexOf("[/C]", cs);
+        if (ce === -1) { html += escHtml(rem.substring(cs)); break; }
+        html += '<span class="code-block">' + escHtml(rem.substring(cs + 3, ce)) + '</span>';
+        rem = rem.substring(ce + 4);
+    }
+    return html;
+}
+
+function renderStepBody(step, bodyEl) {
+    var raw = step.text || step.speak || "";
+    var html = parseCodeBlocks(raw);
+    if (step.type === "answer") {
+        bodyEl.innerHTML = '<div class="answer-body">' + html + '</div>';
+    } else if (step.type === "tip") {
+        bodyEl.innerHTML = '<div class="tip-body">💡 ' + html + '</div>';
+    } else {
+        bodyEl.className = "step-body";
+        bodyEl.innerHTML = html;
+    }
+}
+
+var LANG_TTS = {
+    "tanglish":"en-IN","tamil":"ta-IN","english":"en-IN","hindi":"hi-IN",
+    "telugu":"te-IN","kannada":"kn-IN","malayalam":"ml-IN","marathi":"mr-IN",
+    "bengali":"bn-IN","gujarati":"gu-IN","punjabi":"pa-IN","odia":"or-IN",
+    "urdu":"ur-IN","french":"fr-FR","german":"de-DE","spanish":"es-ES",
+    "italian":"it-IT","portuguese":"pt-BR","russian":"ru-RU","arabic":"ar-SA",
+    "chinese":"zh-CN","japanese":"ja-JP","korean":"ko-KR","dutch":"nl-NL",
+    "turkish":"tr-TR","thai":"th-TH","vietnamese":"vi-VN","indonesian":"id-ID",
+    "malay":"ms-MY","swahili":"sw-KE","greek":"el-GR",
+};
+
+function cleanForSpeak(text, lang) {
+    if (!text) return '';
+    var ttsLang = LANG_TTS[lang || selectedLang] || "en-IN";
+    var latinLangs = ["en-IN","fr-FR","de-DE","es-ES","it-IT","pt-BR","nl-NL","tr-TR","el-GR"];
+    if (latinLangs.indexOf(ttsLang) !== -1) {
+        var clean = '';
+        for (var i = 0; i < text.length; i++) {
+            var c = text.charCodeAt(i);
+            if (c < 128) clean += text[i];
+        }
+        return clean.replace(/\[.*?\]/g,'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+    }
+    return text.replace(/\[C\][\s\S]*?\[\/C\]/g,'')
+               .replace(/\[.*?\]/g,'')
+               .replace(/<[^>]*>/g,'')
+               .replace(/\s+/g,' ').trim();
+}
+
+function getBestVoice(langCode) {
+    langCode = langCode || "en-IN";
+    var voices = speechSynthesis.getVoices();
+    for (var i = 0; i < voices.length; i++) {
+        if (voices[i].lang === langCode) return voices[i];
+    }
+    var prefix = langCode.split("-")[0];
+    for (var i = 0; i < voices.length; i++) {
+        if (voices[i].lang.startsWith(prefix)) return voices[i];
+    }
+    var femaleKeywords = ["neerja","heera","priya","raveena","female","woman"];
+    for (var i = 0; i < voices.length; i++) {
+        var name = voices[i].name.toLowerCase();
+        if (voices[i].lang === "en-IN") {
+            for (var f = 0; f < femaleKeywords.length; f++) {
+                if (name.indexOf(femaleKeywords[f]) !== -1) return voices[i];
+            }
+        }
+    }
+    for (var i = 0; i < voices.length; i++) {
+        if (voices[i].lang === "en-IN") return voices[i];
+    }
+    return voices.length ? voices[0] : null;
+}
+
+function speakText(text, lang) {
+    if (!text) return;
+    var ttsLang = LANG_TTS[lang || selectedLang] || "en-IN";
+    var clean = cleanForSpeak(text, lang || selectedLang);
+    if (!clean) return;
+    speechSynthesis.cancel();
+    setTimeout(function() {
+        var u = new SpeechSynthesisUtterance(clean);
+        u.lang = ttsLang;
+        u.rate = 0.9; u.pitch = 1.0;
+        var v = getBestVoice(ttsLang);
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+    }, 100);
+}
+
+function speakStepWithSync(steps, index) {
+    if (index >= steps.length) return;
+    var step   = steps[index];
+    var bodyEl = step._bodyEl;
+    var raw    = step.text || step.speak || "";
+    var clean  = cleanForSpeak(raw);
+    if (!clean) { renderStepBody(step, bodyEl); speakStepWithSync(steps, index + 1); return; }
+
+    var words = clean.split(" ");
+    var shownWords = [];
+    var wordIdx = 0;
+    var fired = false;
+    var fbTimer = null;
+
+    if (bodyEl) bodyEl.innerHTML = '<span class="typing-cursor">|</span>';
+
+    function showWord() {
+        if (wordIdx >= words.length) return;
+        shownWords.push(words[wordIdx++]);
+        if (bodyEl) {
+            var txt = escHtml(shownWords.join(" ")) + '<span class="typing-cursor">|</span>';
+            if (step.type === "answer") {
+                bodyEl.innerHTML = '<div class="answer-body">' + txt + '</div>';
+            } else if (step.type === "tip") {
+                bodyEl.innerHTML = '<div class="tip-body">💡 ' + txt + '</div>';
+            } else {
+                bodyEl.className = "step-body";
+                bodyEl.innerHTML = txt;
+            }
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+    }
+
+    function finishStep() {
+        if (fired) return;
+        fired = true;
+        if (fbTimer) clearInterval(fbTimer);
+        if (bodyEl) renderStepBody(step, bodyEl);
+        setTimeout(function(){ speakStepWithSync(steps, index + 1); }, 500);
+    }
+
+    var ttsLang = LANG_TTS[selectedLang] || "en-IN";
+    var u = new SpeechSynthesisUtterance(clean);
+    u.lang = ttsLang; u.rate = 0.87; u.pitch = 1.05;
+    var v = getBestVoice(ttsLang); if (v) u.voice = v;
+
+    var wordMs = Math.max(180, Math.round((clean.length * 87) / Math.max(words.length, 1)));
+    var boundaryFired = false;
+    u.onboundary = function(e) {
+        if (e.name === "word") { boundaryFired = true; showWord(); }
+    };
+    u.onend   = finishStep;
+    u.onerror = finishStep;
+
+    setTimeout(function() {
+        if (!boundaryFired && !fired) {
+            fbTimer = setInterval(function() {
+                if (fired) { clearInterval(fbTimer); return; }
+                if (wordIdx < words.length) showWord();
+                else clearInterval(fbTimer);
+            }, wordMs);
+        }
+    }, 500);
+
+    setTimeout(finishStep, Math.max(4000, clean.length * 95) + 2000);
+    speechSynthesis.speak(u);
+}
+
+function renderTeacherSteps(steps) {
+    speechSynthesis.cancel();
+    for (var i = 0; i < steps.length; i++) {
+        (function(step, idx) {
+            setTimeout(function() {
+                var sc = STEP_COLORS[step.type] || STEP_COLORS.work;
+                var card = document.createElement("div");
+                card.className = "teacher-step";
+                var labelEl = document.createElement("div");
+                labelEl.className = "step-label";
+                labelEl.style.color      = sc.color;
+                labelEl.style.background = sc.bg;
+                labelEl.innerText = step.label || ("Step " + (idx + 1));
+                card.appendChild(labelEl);
+                var bodyEl = document.createElement("div");
+                bodyEl.className = "step-body";
+                bodyEl.innerHTML = '<span style="opacity:0.3;font-size:11px;">...</span>';
+                card.appendChild(bodyEl);
+                step._bodyEl = bodyEl;
+                msgs.appendChild(card);
+                msgs.scrollTop = msgs.scrollHeight;
+            }, idx * 350);
+        })(steps[i], i);
+    }
+    setTimeout(function(){
+        speakStepWithSync(steps, 0);
+    }, steps.length * 350 + 300);
+}
+
+async function sendText(customText) {
+    var text = (customText || inputEl.value).trim();
+    if (!text) return;
+    addMsg(text, "user");
+    inputEl.value = "";
+    sendBtn.disabled = true;
+    sendBtn.textContent = "...";
+    showTyping();
+    chatHistory.push({ role: "user", content: text });
+
+    try {
+        var response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, twin: twin, history: chatHistory.slice(-10), language: selectedLang }),
+        });
+        if (!response.ok) throw new Error("Server error: " + response.status);
+        var data = await response.json();
+        hideTyping();
+
+        if (twin === "teacher") {
+            var parsed = null;
+            try {
+                var raw = data.reply;
+                raw = raw.replace(/^```json/, "").replace(/```$/, "").trim();
+                parsed = JSON.parse(raw);
+            } catch(e) {}
+
+            if (parsed && parsed.steps && parsed.steps.length > 0) {
+                var summary = parsed.steps.map(function(s){
+                    var t = s.text || "";
+                    t = t.replace(/\[C\][\s\S]*?\[\/C\]/g, "[code]");
+                    return t;
+                }).join(" | ");
+                chatHistory.push({ role: "assistant", content: summary });
+                renderTeacherSteps(parsed.steps);
+                return;
+            }
+        }
+
+        var msgDiv = document.createElement("div");
+        msgDiv.className = "msg bot";
+        msgDiv.innerHTML = escHtml(data.reply);
+
+        var emotionName  = data.emotion || "neutral";
+        var emotionEmoji = data.emoji   || "💬";
+        var emotionLabel = data.label   || "Neutral";
+        var labelDiv = document.createElement("div");
+        labelDiv.className = "emotion-label emotion-" + emotionName;
+        labelDiv.innerText = emotionEmoji + " " + emotionLabel;
+        msgDiv.appendChild(labelDiv);
+        msgs.appendChild(msgDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+
+        chatHistory.push({ role: "assistant", content: data.reply });
+
+        if (twin === "tourist") {
+            speakText(data.reply, selectedLang);
+        } else {
+            var audio = new Audio("/audio/reply.wav?t=" + Date.now());
+            audio.play().catch(function(){ speakText(data.reply, selectedLang); });
+        }
+
+    } catch(err) {
+        hideTyping();
+        addMsg("Oops! Something went wrong. Try again.", "bot error-msg");
+        console.error("Chat error:", err);
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+    }
+}
+
+var selectedLang = "tanglish";
+
+if (twin === "tourist") {
+    document.getElementById("scanArea").classList.add("tourist-mode");
+    document.getElementById("langBar").classList.add("tourist-mode");
+}
+
+function setLang(lang) {
+    selectedLang = lang;
+    var sel = document.getElementById("langSelect");
+    if (sel) sel.value = lang;
+    var opt = sel ? sel.options[sel.selectedIndex] : null;
+    var langName = opt ? opt.text : lang;
+    addMsg("🌐 Language changed: " + langName, "bot");
+}
+
+function handleImageUpload(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var dataUrl = e.target.result;
+        var base64  = dataUrl.split(",")[1];
+        var mime    = file.type || "image/jpeg";
+        var imgDiv = document.createElement("div");
+        imgDiv.className = "img-msg";
+        var img = document.createElement("img");
+        img.src = dataUrl;
+        imgDiv.appendChild(img);
+        msgs.appendChild(imgDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+        sendImageToBackend(base64, mime);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+}
+
+async function sendImageToBackend(base64, mime) {
+    sendBtn.disabled = true;
+    showTyping();
+    try {
+        var response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: "identify this tourist place",
+                twin: twin,
+                image_base64: base64,
+                mime_type: mime,
+                language: selectedLang
+            })
+        });
+        if (!response.ok) throw new Error("Server error");
+        var data = await response.json();
+        hideTyping();
+        var msgDiv = document.createElement("div");
+        msgDiv.className = "msg bot";
+        msgDiv.innerHTML = escHtml(data.reply);
+        msgs.appendChild(msgDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+        speakText(data.reply, selectedLang);
+    } catch(err) {
+        hideTyping();
+        addMsg("Image analyze panna mudiyala. Clear photo try pannunga!", "bot error-msg");
+    } finally {
+        sendBtn.disabled = false;
+    }
+}
+
+speechSynthesis.getVoices();
+if (speechSynthesis.onvoiceschanged !== undefined)
+    speechSynthesis.onvoiceschanged = function(){};
+</script>
+</body>
+</html>

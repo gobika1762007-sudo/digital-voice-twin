@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Chat History Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0d0d1a; font-family:'Nunito',sans-serif; color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+
+.header {
+    background:linear-gradient(135deg,#0a0a1a,#1a1a2e);
+    padding:12px 16px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid rgba(0,204,255,0.2); flex-shrink:0;
+}
+.header h2 { font-size:15px; font-weight:800; background:linear-gradient(90deg,#00ccff,#00ffaa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.back-btn { background:transparent; border:1px solid rgba(0,204,255,0.4); color:#00ccff; padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; font-family:'Nunito',sans-serif; text-decoration:none; }
+.online-dot { width:8px; height:8px; border-radius:50%; background:#0f0; box-shadow:0 0 6px #0f0; margin-left:auto; animation:pulse 2s infinite; }
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* Stats */
+.stats-bar { display:flex; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.05); flex-shrink:0; }
+.stat-item { flex:1; text-align:center; padding:10px 5px; border-right:1px solid rgba(255,255,255,0.05); }
+.stat-item:last-child { border-right:none; }
+.stat-num { font-size:20px; font-weight:800; }
+.stat-lbl { font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:0.5px; margin-top:2px; }
+
+/* Twin tabs */
+.twin-tabs { display:flex; overflow-x:auto; background:rgba(0,0,0,0.4); border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+.twin-tabs::-webkit-scrollbar { height:0; }
+.twin-tab {
+    flex-shrink:0; padding:10px 16px; background:transparent; border:none;
+    color:rgba(255,255,255,0.35); font-family:'Nunito',sans-serif;
+    font-size:11px; font-weight:800; cursor:pointer;
+    border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap;
+}
+.twin-tab:hover { color:#fff; background:rgba(255,255,255,0.04); }
+.twin-tab.active { border-bottom-color:var(--tc,#00ccff); color:var(--tc,#00ccff); }
+.twin-tab .badge { display:inline-block; font-size:8px; border-radius:7px; padding:1px 5px; margin-left:4px; background:rgba(255,255,255,0.1); }
+
+/* Main layout */
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* Date sidebar */
+.sidebar { width:62px; background:rgba(255,255,255,0.02); border-right:1px solid rgba(255,255,255,0.05); overflow-y:auto; flex-shrink:0; padding:5px 0; }
+.sidebar::-webkit-scrollbar { width:2px; }
+.sidebar::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); }
+.date-btn {
+    width:100%; padding:8px 3px; background:transparent; border:none;
+    cursor:pointer; color:rgba(255,255,255,0.35); font-family:'Nunito',sans-serif;
+    font-size:9px; font-weight:700; text-align:center;
+    border-left:3px solid transparent; transition:all 0.2s; line-height:1.3;
+}
+.date-btn:hover { color:#fff; background:rgba(255,255,255,0.05); }
+.date-btn.active { color:var(--tc,#00ccff); border-left-color:var(--tc,#00ccff); background:rgba(0,204,255,0.05); }
+.date-btn .dn { font-size:15px; font-weight:800; display:block; }
+.date-btn .dm { font-size:8px; display:block; opacity:0.6; }
+.date-btn .dc { display:inline-block; background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:8px; border-radius:5px; padding:1px 4px; margin-top:2px; }
+
+/* Chat area */
+.chat-area { flex:1; overflow-y:auto; padding:10px; }
+.chat-area::-webkit-scrollbar { width:3px; }
+.chat-area::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+
+.no-msg { text-align:center; padding:50px 20px; color:rgba(255,255,255,0.18); }
+.no-msg .icon { font-size:36px; margin-bottom:8px; }
+.no-msg p { font-size:12px; line-height:1.6; }
+
+/* Conversation card */
+.conv-card {
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+    border-radius:12px; padding:12px; margin-bottom:10px;
+    animation:si 0.2s ease;
+}
+@keyframes si{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+.conv-time { font-size:9px; color:rgba(255,255,255,0.2); margin-bottom:8px; }
+.twin-badge {
+    display:inline-block; font-size:9px; font-weight:800; padding:2px 8px;
+    border-radius:20px; margin-bottom:8px; letter-spacing:0.5px;
+}
+.badge-teacher { background:rgba(0,204,255,0.1); border:1px solid rgba(0,204,255,0.3); color:#00ccff; }
+.badge-tourist  { background:rgba(0,255,170,0.1); border:1px solid rgba(0,255,170,0.3); color:#00ffaa; }
+
+.lbl { font-size:9px; color:rgba(255,255,255,0.25); letter-spacing:1px; margin-bottom:3px; text-transform:uppercase; }
+.bubble-user {
+    background:rgba(255,255,255,0.06); border-radius:10px 10px 10px 2px;
+    padding:8px 11px; font-size:13px; color:#fff; margin-bottom:8px;
+}
+.bubble-bot {
+    background:rgba(0,204,255,0.05); border:1px solid rgba(0,204,255,0.1);
+    border-radius:10px; padding:8px 11px; font-size:12px;
+    color:rgba(255,255,255,0.6); line-height:1.6;
+}
+
+/* Search bar */
+.search-bar { padding:8px 12px; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.05); flex-shrink:0; }
+.search-input {
+    width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+    border-radius:20px; padding:7px 14px; font-size:12px; color:#fff;
+    font-family:'Nunito',sans-serif; outline:none;
+}
+.search-input::placeholder { color:rgba(255,255,255,0.2); }
+.search-input:focus { border-color:rgba(0,204,255,0.4); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <a href="/" class="back-btn">← Home</a>
+    <span style="font-size:20px;">💬</span>
+    <h2>Chat History</h2>
+    <div class="online-dot"></div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar" id="statsBar">
+    <div class="stat-item">
+        <div class="stat-num" id="statTotal" style="color:#00ccff;">0</div>
+        <div class="stat-lbl">TOTAL</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" id="statTeacher" style="color:#00ccff;">0</div>
+        <div class="stat-lbl">TEACHER</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" id="statTourist" style="color:#00ffaa;">0</div>
+        <div class="stat-lbl">TOURIST</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-num" id="statToday" style="color:#c084fc;">0</div>
+        <div class="stat-lbl">TODAY</div>
+    </div>
+</div>
+
+<!-- Twin tabs -->
+<div class="twin-tabs" id="twinTabs">
+    <button class="twin-tab active" id="tab-all" style="--tc:#00ccff" onclick="switchTwin('all')">
+        All <span class="badge" id="badge-all">0</span>
+    </button>
+    <button class="twin-tab" id="tab-teacher" style="--tc:#00ccff" onclick="switchTwin('teacher')">
+        Python Teacher <span class="badge" id="badge-teacher">0</span>
+    </button>
+    <button class="twin-tab" id="tab-tourist" style="--tc:#00ffaa" onclick="switchTwin('tourist')">
+        Tourist Guide <span class="badge" id="badge-tourist">0</span>
+    </button>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search conversations..." oninput="filterSearch(this.value)">
+</div>
+
+<div class="main">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="chat-area" id="chatArea"></div>
+</div>
+
+<script>
+var allData = [];
+var currentTwin = 'all';
+var selectedDate = null;
+var searchQuery = '';
+
+var TWIN_COLORS = {
+    teacher: '#00ccff',
+    tourist: '#00ffaa',
+    all: '#00ccff'
+};
+
+function escHtml(t) {
+    if (!t) return '';
+    return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function getTodayKey() {
+    var now = new Date();
+    var dd = String(now.getDate()).padStart(2,'0');
+    var mm = String(now.getMonth()+1).padStart(2,'0');
+    var yy = now.getFullYear();
+    return dd + '-' + mm + '-' + yy;
+}
+
+function dateKey(dateStr) {
+    return dateStr || '00-00-0000';
+}
+
+function updateStats(data) {
+    var teacher = data.filter(function(d){ return d.twin === 'teacher'; }).length;
+    var tourist  = data.filter(function(d){ return d.twin === 'tourist'; }).length;
+    var today    = data.filter(function(d){ return d.date === getTodayKey(); }).length;
+    document.getElementById('statTotal').textContent   = data.length;
+    document.getElementById('statTeacher').textContent = teacher;
+    document.getElementById('statTourist').textContent = tourist;
+    document.getElementById('statToday').textContent   = today;
+    document.getElementById('badge-all').textContent     = data.length;
+    document.getElementById('badge-teacher').textContent = teacher;
+    document.getElementById('badge-tourist').textContent = tourist;
+}
+
+function buildSidebar(data) {
+    var groups = {};
+    data.forEach(function(d) {
+        var k = dateKey(d.date);
+        groups[k] = (groups[k] || 0) + 1;
+    });
+    var dates = Object.keys(groups).sort().reverse();
+    if (!selectedDate || !groups[selectedDate]) selectedDate = dates[0] || null;
+
+    var sb = document.getElementById('sidebar');
+    sb.innerHTML = '';
+    dates.forEach(function(k) {
+        var parts = k.split('-');
+        var day = parts[0] || k;
+        var months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var mon = (months[parseInt(parts[1])] || '') + ' ' + (parts[2] ? parts[2].slice(2) : '');
+        var btn = document.createElement('button');
+        btn.className = 'date-btn' + (k === selectedDate ? ' active' : '');
+        btn.innerHTML = '<span class="dn">' + day + '</span><span class="dm">' + mon + '</span><span class="dc">' + groups[k] + '</span>';
+        btn.onclick = function(){ selectedDate = k; renderChats(); };
+        sb.appendChild(btn);
+    });
+}
+
+function renderChats() {
+    var tc = TWIN_COLORS[currentTwin] || '#00ccff';
+    document.documentElement.style.setProperty('--tc', tc);
+
+    var filtered = allData;
+
+    if (currentTwin !== 'all') {
+        filtered = filtered.filter(function(d){ return d.twin === currentTwin; });
+    }
+
+    if (searchQuery) {
+        var q = searchQuery.toLowerCase();
+        filtered = filtered.filter(function(d){
+            return (d.user_msg||'').toLowerCase().includes(q) ||
+                   (d.bot_reply||'').toLowerCase().includes(q);
+        });
+    }
+
+    buildSidebar(filtered);
+
+    var byDate = selectedDate
+        ? filtered.filter(function(d){ return dateKey(d.date) === selectedDate; })
+        : filtered;
+
+    var area = document.getElementById('chatArea');
+    if (!byDate.length) {
+        area.innerHTML = '<div class="no-msg"><div class="icon">💬</div><p>No conversations found.</p></div>';
+        return;
+    }
+
+    area.innerHTML = '';
+    byDate.forEach(function(d) {
+        var card = document.createElement('div');
+        card.className = 'conv-card';
+
+        var twinLabel = d.twin === 'teacher' ? 'Python Teacher' : 'Tourist Guide';
+        var badgeClass = d.twin === 'teacher' ? 'badge-teacher' : 'badge-tourist';
+
+        // Truncate long bot replies
+        var botText = d.bot_reply || '';
+        try {
+            var parsed = JSON.parse(botText);
+            if (parsed && parsed.steps) {
+                botText = parsed.steps.map(function(s){ return s.text || ''; }).join(' | ').substring(0, 200) + '...';
+            }
+        } catch(e) {
+            botText = botText.substring(0, 300) + (botText.length > 300 ? '...' : '');
+        }
+
+        card.innerHTML =
+            '<div class="conv-time">' + escHtml(d.date || '') + ' &nbsp; ' + escHtml(d.time || '') + '</div>' +
+            '<span class="twin-badge ' + badgeClass + '">' + twinLabel + '</span>' +
+            '<div class="lbl">User</div>' +
+            '<div class="bubble-user">' + escHtml(d.user_msg || '') + '</div>' +
+            '<div class="lbl">Bot reply</div>' +
+            '<div class="bubble-bot">' + escHtml(botText) + '</div>';
+
+        area.appendChild(card);
+    });
+}
+
+function switchTwin(twin) {
+    currentTwin = twin;
+    selectedDate = null;
+    ['all','teacher','tourist'].forEach(function(t) {
+        var tab = document.getElementById('tab-' + t);
+        if (tab) tab.className = 'twin-tab' + (t === twin ? ' active' : '');
+    });
+    renderChats();
+}
+
+function filterSearch(val) {
+    searchQuery = val;
+    selectedDate = null;
+    renderChats();
+}
+
+// Load data
+fetch('/chat_history_data')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        allData = data;
+        updateStats(data);
+        renderChats();
+    })
+    .catch(function() {
+        document.getElementById('chatArea').innerHTML =
+            '<div class="no-msg"><div class="icon">⚠️</div><p>Could not load chat history.<br>Make sure app.py is running!</p></div>';
+    });
+
+// Auto refresh every 30 seconds
+setInterval(function() {
+    fetch('/chat_history_data')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            allData = data;
+            updateStats(data);
+            renderChats();
+        }).catch(function(){});
+}, 30000);
+</script>
+</body>
+</html>
