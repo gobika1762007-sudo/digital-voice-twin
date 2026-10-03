@@ -6,3 +6,4 @@ scikit-learn==1.7.2
 groq==1.0.0
 edge-tts==7.2.7
 gunicorn==21.2.0
+twilio
